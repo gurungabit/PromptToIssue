@@ -1,0 +1,41 @@
+{
+  "name": "backend",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@google/genai": "^1.1.0",
+    "@hono/node-server": "^1.14.3",
+    "@hono/zod-validator": "^0.6.0",
+    "@octokit/rest": "^22.0.0",
+    "@paralleldrive/cuid2": "^2.2.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/sqlite3": "^3.1.11",
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^11.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "drizzle-kit": "^0.31.1",
+    "drizzle-orm": "^0.44.0",
+    "hono": "^4.7.10",
+    "jsonwebtoken": "^9.0.2",
+    "openai": "^4.103.0",
+    "sqlite3": "^5.1.7",
+    "zod": "^3.25.33"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.18",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^20.11.17",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
