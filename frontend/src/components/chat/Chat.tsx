@@ -7,6 +7,7 @@ import { useToast } from '../../contexts/ToastContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import CustomSelect from '../ui/CustomSelect';
 import MilestoneSelector from '../ui/MilestoneSelector';
+import ProjectSelector from '../ui/ProjectSelector';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import axios from 'axios';
@@ -967,12 +968,8 @@ You can click on any ticket title above to view it on your platform. All tickets
                         </span>
                       </div>
                     ) : (
-                      <CustomSelect
-                        options={projects.map(project => ({
-                          value: project.id,
-                          label: project.name,
-                          description: project.url,
-                        }))}
+                      <ProjectSelector
+                        projects={projects}
                         value={selectedProject}
                         onChange={value => {
                           setSelectedProject(value);
@@ -980,7 +977,7 @@ You can click on any ticket title above to view it on your platform. All tickets
                             loadMilestones(selectedPlatform, value);
                           }
                         }}
-                        placeholder='Select a project...'
+                        placeholder='Select project or enter project ID...'
                         className='w-full'
                       />
                     )}

@@ -34,6 +34,9 @@ PromptToIssue is an intelligent chatbot platform that revolutionizes how develop
 ### Custom Milestone ID Support
 If a milestone isn't found in the dropdown, you can type the milestone ID directly to manually specify it.
 
+### Custom Project ID Support  
+If a project isn't found in the dropdown, you can type the project ID directly to manually specify it.
+
 ### Improved Milestone Fetching
 The GitLab integration now fetches all active milestones with comprehensive pagination support, ensuring you see all available milestones regardless of quantity.
 
