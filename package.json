@@ -17,7 +17,13 @@
     "db:generate": "cd backend && npm run db:generate",
     "db:migrate": "cd backend && npm run db:migrate",
     "db:studio": "cd backend && npm run db:studio",
-    "setup": "npm run install:all && npm run db:generate && npm run db:migrate"
+    "setup": "npm run install:all && npm run db:generate && npm run db:migrate",
+    "format": "npm run format:backend && npm run format:frontend",
+    "format:backend": "cd backend && npm run format",
+    "format:frontend": "cd frontend && npm run format",
+    "format:check": "npm run format:check:backend && npm run format:check:frontend",
+    "format:check:backend": "cd backend && npm run format:check",
+    "format:check:frontend": "cd frontend && npm run format:check"
   },
   "keywords": [
     "ai",

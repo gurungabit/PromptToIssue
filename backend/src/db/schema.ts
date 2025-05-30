@@ -3,7 +3,9 @@ import { relations } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
 export const users = sqliteTable('users', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
   email: text('email').notNull().unique(),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
@@ -12,8 +14,12 @@ export const users = sqliteTable('users', {
 });
 
 export const platforms = sqliteTable('platforms', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(), // 'gitlab', 'github'
   apiUrl: text('api_url').notNull(),
   accessToken: text('access_token').notNull(),
@@ -25,8 +31,12 @@ export const platforms = sqliteTable('platforms', {
 });
 
 export const conversations = sqliteTable('conversations', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   summary: text('summary'),
   aiModel: text('ai_model').notNull(), // 'openai', 'anthropic', 'google'
@@ -36,8 +46,12 @@ export const conversations = sqliteTable('conversations', {
 });
 
 export const messages = sqliteTable('messages', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  conversationId: text('conversation_id')
+    .notNull()
+    .references(() => conversations.id, { onDelete: 'cascade' }),
   role: text('role').notNull(), // 'user', 'assistant', 'system'
   content: text('content').notNull(),
   metadata: text('metadata'), // JSON string for additional data
@@ -45,8 +59,12 @@ export const messages = sqliteTable('messages', {
 });
 
 export const tickets = sqliteTable('tickets', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  conversationId: text('conversation_id')
+    .notNull()
+    .references(() => conversations.id, { onDelete: 'cascade' }),
   platformId: text('platform_id').references(() => platforms.id),
   externalId: text('external_id'), // ID from GitLab/GitHub
   externalUrl: text('external_url'), // URL to the created ticket
@@ -62,8 +80,12 @@ export const tickets = sqliteTable('tickets', {
 });
 
 export const userSettings = sqliteTable('user_settings', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   preferredAiModel: text('preferred_ai_model').default('openai'),
   defaultPlatform: text('default_platform'),
   ticketTemplate: text('ticket_template'), // JSON template for ticket formatting
@@ -73,8 +95,12 @@ export const userSettings = sqliteTable('user_settings', {
 });
 
 export const apiKeys = sqliteTable('api_keys', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   provider: text('provider').notNull(), // 'openai', 'anthropic', 'google'
   keyHash: text('key_hash').notNull(), // Encrypted API key
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
@@ -152,4 +178,4 @@ export type NewTicket = typeof tickets.$inferInsert;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
-export type NewApiKey = typeof apiKeys.$inferInsert; 
+export type NewApiKey = typeof apiKeys.$inferInsert;

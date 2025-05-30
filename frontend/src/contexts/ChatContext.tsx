@@ -1,34 +1,40 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
-import { ChatContext, type TicketData, type Conversation, type ChatContextType, type ChatMode } from '../hooks/useChat';
+import {
+  ChatContext,
+  type TicketData,
+  type Conversation,
+  type ChatContextType,
+  type ChatMode,
+} from '../hooks/useChat';
 
 // Configure axios defaults - use relative URLs since Vite proxy handles routing
 // axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // Add request interceptor to include auth token
 axios.interceptors.request.use(
-  (config) => {
+  config => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
+  error => {
     return Promise.reject(error);
   }
 );
 
 // Add response interceptor to handle auth errors
 axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  response => response,
+  error => {
     if (error.response?.status === 401) {
       // Clear token and redirect to login only if not already on login/register pages
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      
+
       // Check if we're already on login/register pages to avoid infinite redirects
       const currentPath = window.location.pathname;
       if (!currentPath.includes('/login') && !currentPath.includes('/register')) {
@@ -69,7 +75,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   ) => {
     setLoading(true);
     const currentMode = messageMode || mode;
-    
+
     try {
       const response = await axios.post('/api/protected/chat', {
         message,
@@ -91,19 +97,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date().toISOString(),
           mode: currentMode,
         };
-        
+
         // Add to the beginning of the list (most recent first)
         setConversations(prev => [newConversation, ...prev]);
-        
+
         // Then reload to get accurate data from server (this will be fast since it's just a GET request)
         await loadConversations();
       } else {
         // For existing conversations, just update the updatedAt time locally
-        setConversations(prev => prev.map(conv => 
-          conv.id === response.data.conversationId 
-            ? { ...conv, updatedAt: new Date().toISOString() }
-            : conv
-        ));
+        setConversations(prev =>
+          prev.map(conv =>
+            conv.id === response.data.conversationId
+              ? { ...conv, updatedAt: new Date().toISOString() }
+              : conv
+          )
+        );
       }
 
       return response.data;
@@ -183,4 +191,4 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
-} 
+}

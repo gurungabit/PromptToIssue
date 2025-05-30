@@ -50,11 +50,10 @@ export class AIService {
       return await this.generateResponse(preferredProvider, messages, systemPrompt);
     } catch (error) {
       console.warn(`Primary provider ${preferredProvider} failed:`, error);
-      
+
       // Try fallback providers
-      const fallbackProviders = this.getAvailableProviders()
-        .filter(p => p !== preferredProvider);
-      
+      const fallbackProviders = this.getAvailableProviders().filter(p => p !== preferredProvider);
+
       for (const provider of fallbackProviders) {
         try {
           console.log(`Trying fallback provider: ${provider}`);
@@ -63,7 +62,7 @@ export class AIService {
           console.warn(`Fallback provider ${provider} failed:`, fallbackError);
         }
       }
-      
+
       throw new Error('All AI providers failed');
     }
   }
@@ -220,4 +219,4 @@ REMEMBER: You are a general-purpose AI assistant, NOT specialized in development
 // Keep the old name for backward compatibility
 export const SYSTEM_PROMPT = TICKET_SYSTEM_PROMPT;
 
-export * from './types.js'; 
+export * from './types.js';

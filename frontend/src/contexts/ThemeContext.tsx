@@ -15,7 +15,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const shouldBeDark = theme === 'dark';
     setIsDark(shouldBeDark);
-    
+
     if (shouldBeDark) {
       document.documentElement.classList.add('dark');
     } else {
@@ -35,4 +35,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-} 
+}

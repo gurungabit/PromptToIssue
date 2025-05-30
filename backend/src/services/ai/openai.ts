@@ -1,5 +1,11 @@
 import OpenAI from 'openai';
-import type { AIProvider, AIMessage, AIResponse, TicketData, StructuredAIResponse } from './types.js';
+import type {
+  AIProvider,
+  AIMessage,
+  AIResponse,
+  TicketData,
+  StructuredAIResponse,
+} from './types.js';
 import { StructuredAIResponseSchema } from './schemas.js';
 
 export class OpenAIProvider implements AIProvider {
@@ -12,15 +18,17 @@ export class OpenAIProvider implements AIProvider {
 
   async generateResponse(messages: AIMessage[], systemPrompt?: string): Promise<AIResponse> {
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
-    
+
     if (systemPrompt) {
       openaiMessages.push({ role: 'system', content: systemPrompt });
     }
-    
-    openaiMessages.push(...messages.map(msg => ({
-      role: msg.role as 'system' | 'user' | 'assistant',
-      content: msg.content
-    })));
+
+    openaiMessages.push(
+      ...messages.map(msg => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content,
+      }))
+    );
 
     try {
       const response = await this.client.chat.completions.create({
@@ -32,10 +40,10 @@ export class OpenAIProvider implements AIProvider {
 
       const content = response.choices[0]?.message?.content || '';
       console.log('Raw OpenAI response:', content);
-      
+
       // Try to parse as structured JSON response
       const structuredResponse = this.parseStructuredResponse(content);
-      
+
       if (structuredResponse) {
         return {
           content: structuredResponse.message,
@@ -51,7 +59,7 @@ export class OpenAIProvider implements AIProvider {
           content,
           tickets: tickets.length > 0 ? tickets : undefined,
           shouldSplit: tickets.length > 1,
-          clarificationNeeded: content.toLowerCase().includes('clarif') || content.includes('?')
+          clarificationNeeded: content.toLowerCase().includes('clarif') || content.includes('?'),
         };
       }
     } catch (error) {
@@ -64,27 +72,27 @@ export class OpenAIProvider implements AIProvider {
     try {
       // Extract JSON from the response - it might be wrapped in markdown code blocks
       let jsonContent = content.trim();
-      
+
       // Remove markdown code blocks if present
       if (jsonContent.startsWith('```json')) {
         jsonContent = jsonContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
       } else if (jsonContent.startsWith('```')) {
         jsonContent = jsonContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
-      
+
       // Try to find JSON object in the text - look for the first { and last }
       const startIndex = jsonContent.indexOf('{');
       const lastIndex = jsonContent.lastIndexOf('}');
-      
+
       if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
         jsonContent = jsonContent.substring(startIndex, lastIndex + 1);
       }
-      
+
       const parsed = JSON.parse(jsonContent);
-      
+
       // Validate with Zod schema
       const validatedResponse = StructuredAIResponseSchema.parse(parsed);
-      
+
       return {
         message: validatedResponse.message,
         tickets: validatedResponse.tickets,
@@ -99,7 +107,7 @@ export class OpenAIProvider implements AIProvider {
 
   async parseTickets(input: string): Promise<TicketData[]> {
     // First, check if the response is asking for clarification or contains questions
-    const isAskingForClarification = (
+    const isAskingForClarification =
       input.includes('clarif') ||
       input.includes('Could you please') ||
       input.includes('let me know') ||
@@ -109,9 +117,8 @@ export class OpenAIProvider implements AIProvider {
       input.includes('?') ||
       input.toLowerCase().includes('what kind of') ||
       input.toLowerCase().includes('which features') ||
-      input.toLowerCase().includes('more details')
-    );
-    
+      input.toLowerCase().includes('more details');
+
     // If asking for clarification, don't try to extract tickets
     if (isAskingForClarification) {
       console.log('OpenAI response is asking for clarification - not extracting tickets');
@@ -137,17 +144,17 @@ Return only valid JSON array. If no tickets are found, return empty array.
       });
 
       const content = response.choices[0]?.message?.content || '[]';
-      
+
       // Try to extract JSON from the response
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-      
+
       return [];
     } catch (error) {
       console.error('Error parsing tickets:', error);
       return [];
     }
   }
-} 
+}

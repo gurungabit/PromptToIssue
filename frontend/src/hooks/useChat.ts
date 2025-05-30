@@ -42,7 +42,12 @@ export interface ChatContextType {
   conversationsLoading: boolean;
   mode: ChatMode;
   setMode: (mode: ChatMode) => void;
-  sendMessage: (message: string, conversationId?: string, aiModel?: string, mode?: ChatMode) => Promise<{
+  sendMessage: (
+    message: string,
+    conversationId?: string,
+    aiModel?: string,
+    mode?: ChatMode
+  ) => Promise<{
     conversationId: string;
     response: string;
     tickets?: TicketData[];
@@ -51,7 +56,11 @@ export interface ChatContextType {
   }>;
   loadConversations: () => Promise<void>;
   setCurrentConversation: (conversation: Conversation | null) => void;
-  createTickets: (conversationId: string, tickets: TicketData[], platformId?: string) => Promise<void>;
+  createTickets: (
+    conversationId: string,
+    tickets: TicketData[],
+    platformId?: string
+  ) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
   deleteAllConversations: () => Promise<void>;
 }
@@ -66,4 +75,4 @@ export function useChat() {
     throw new Error('useChat must be used within a ChatProvider');
   }
   return context;
-} 
+}

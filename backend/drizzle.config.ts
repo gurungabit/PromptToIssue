@@ -7,4 +7,4 @@ export default defineConfig({
   dbCredentials: {
     url: './app.db',
   },
-}); 
+});

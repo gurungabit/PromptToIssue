@@ -6,4 +6,4 @@ const sqlite = new Database('./app.db');
 export const db = drizzle(sqlite, { schema });
 
 export { schema };
-export const { users, conversations, messages, tickets, platforms, userSettings, apiKeys } = schema; 
+export const { users, conversations, messages, tickets, platforms, userSettings, apiKeys } = schema;

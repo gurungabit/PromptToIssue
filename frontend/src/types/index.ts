@@ -45,4 +45,4 @@ export interface TicketCreationResponse {
   message: string;
 }
 
-export type TicketFieldValue = string | string[] | number | 'low' | 'medium' | 'high' | 'critical'; 
+export type TicketFieldValue = string | string[] | number | 'low' | 'medium' | 'high' | 'critical';

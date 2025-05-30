@@ -20,42 +20,42 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+      <div className='min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center'>
+        <LoadingSpinner size='lg' />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className='min-h-screen bg-gray-50 dark:bg-gray-900'>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path='/login' element={<Login />} />
+          <Route path='/register' element={<Register />} />
+          <Route path='*' element={<Navigate to='/login' replace />} />
         </Routes>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex overflow-hidden">
+    <div className='h-screen bg-gray-50 dark:bg-gray-900 flex overflow-hidden'>
       {/* Sidebar - conditionally visible */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
       {/* Main content area */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
-        <Navbar 
-          onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
-        />
-        
-        <main className="flex-1 overflow-hidden">
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}
+      >
+        <Navbar onSidebarToggle={() => setSidebarOpen(!sidebarOpen)} />
+
+        <main className='flex-1 overflow-hidden'>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/chat/:conversationId" element={<Chat />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path='/' element={<Dashboard />} />
+            <Route path='/chat' element={<Chat />} />
+            <Route path='/chat/:conversationId' element={<Chat />} />
+            <Route path='/settings' element={<Settings />} />
+            <Route path='*' element={<Navigate to='/' replace />} />
           </Routes>
         </main>
       </div>

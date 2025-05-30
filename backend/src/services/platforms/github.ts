@@ -39,7 +39,7 @@ export class GitHubClient implements PlatformClient {
 
   async createTicket(projectId: string, ticket: PlatformTicket): Promise<CreatedTicket> {
     const [owner, repo] = projectId.split('/');
-    
+
     const issueData = {
       owner,
       repo,
@@ -89,4 +89,4 @@ export class GitHubClient implements PlatformClient {
       number: issue.number,
     };
   }
-} 
+}

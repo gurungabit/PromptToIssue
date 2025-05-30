@@ -553,7 +553,7 @@ git push origin feature/your-feature
 
 ### 📋 Development Guidelines
 
-- **Code Style**: We use ESLint and Prettier
+- **Code Style**: We use ESLint and Prettier - see [FORMATTING.md](FORMATTING.md)
 - **TypeScript**: Strict mode with full type coverage
 - **Testing**: Add tests for new features
 - **Documentation**: Update README and code comments
