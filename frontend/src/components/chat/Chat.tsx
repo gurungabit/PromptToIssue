@@ -76,12 +76,9 @@ const CodeBlock = ({ children, className, addToast, ...props }: any) => {
 
 // Custom component for AI responses with analysis and tickets
 function AIResponseMessage({ 
-  message, 
   aiResponse, 
   editingTickets, 
-  setEditingTickets, 
   editedTickets, 
-  setEditedTickets, 
   updateEditedTicket, 
   startEditing, 
   saveEdit, 
@@ -142,6 +139,16 @@ function AIResponseMessage({
                   ol: ({children}) => <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 mb-2 space-y-1">{children}</ol>,
                   li: ({children}) => <li className="text-gray-700 dark:text-gray-300">{children}</li>,
                   strong: ({children}) => <strong className="font-semibold text-gray-700 dark:text-gray-300">{children}</strong>,
+                  a: ({href, children}) => (
+                    <a 
+                      href={href} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline decoration-blue-600 dark:decoration-blue-400 hover:decoration-blue-800 dark:hover:decoration-blue-300 underline-offset-2 transition-colors duration-200 font-medium"
+                    >
+                      {children}
+                    </a>
+                  ),
                   code: (props) => <CodeBlock {...props} addToast={addToast} />,
                   pre: ({children}) => <div className="my-2">{children}</div>
                 }}
@@ -991,12 +998,9 @@ You can click on any ticket title above to view it on your platform. All tickets
                             (message.content === aiResponse.response || 
                              (message.metadata && JSON.parse(message.metadata as string)?.tickets)) ? (
                               <AIResponseMessage
-                                message={message}
                                 aiResponse={aiResponse}
                                 editingTickets={editingTickets}
-                                setEditingTickets={setEditingTickets}
                                 editedTickets={editedTickets}
-                                setEditedTickets={setEditedTickets}
                                 updateEditedTicket={updateEditedTicket}
                                 startEditing={startEditing}
                                 saveEdit={saveEdit}
@@ -1020,6 +1024,16 @@ You can click on any ticket title above to view it on your platform. All tickets
                                   strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
                                   em: ({children}) => <em className="italic text-gray-800 dark:text-gray-200">{children}</em>,
                                   blockquote: ({children}) => <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-700 dark:text-gray-300 my-2">{children}</blockquote>,
+                                  a: ({href, children}) => (
+                                    <a 
+                                      href={href} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline decoration-blue-600 dark:decoration-blue-400 hover:decoration-blue-800 dark:hover:decoration-blue-300 underline-offset-2 transition-colors duration-200 font-medium"
+                                    >
+                                      {children}
+                                    </a>
+                                  ),
                                   code: (props) => <CodeBlock {...props} addToast={addToast} />,
                                   pre: ({children}) => <div className="my-2">{children}</div>
                                 }}
