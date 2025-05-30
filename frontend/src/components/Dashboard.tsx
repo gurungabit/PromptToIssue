@@ -17,17 +17,6 @@ export default function Dashboard() {
       color: 'blue'
     },
     {
-      title: 'View History',
-      description: 'Browse your previous conversations and tickets',
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      action: '/history',
-      color: 'green'
-    },
-    {
       title: 'Platform Settings',
       description: 'Connect GitLab, GitHub, and configure integrations',
       icon: (
@@ -39,12 +28,6 @@ export default function Dashboard() {
       action: '/settings',
       color: 'purple'
     }
-  ];
-
-  const stats = [
-    { label: 'Conversations', value: '0', color: 'blue' },
-    { label: 'Tickets Created', value: '0', color: 'green' },
-    { label: 'Platforms Connected', value: '0', color: 'purple' }
   ];
 
   const getColorClasses = (color: string) => {
@@ -85,26 +68,6 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {stats.map((stat, index) => {
-            const colors = getColorClasses(stat.color);
-            return (
-              <div 
-                key={index}
-                className={`${colors.bg} ${colors.border} border rounded-2xl p-8 text-center hover:shadow-lg transition-shadow`}
-              >
-                <div className={`text-4xl font-bold ${colors.accent} mb-2`}>
-                  {stat.value}
-                </div>
-                <div className="text-gray-600 dark:text-gray-400">
-                  {stat.label}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
         {/* Quick Actions */}
         <div className="space-y-8">
           <div className="text-center">
@@ -112,7 +75,7 @@ export default function Dashboard() {
               What would you like to do today?
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {quickActions.map((action, index) => {
               const colors = getColorClasses(action.color);
               return (
