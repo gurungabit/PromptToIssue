@@ -52,7 +52,7 @@ export default function Chat() {
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [selectedAiModel, setSelectedAiModel] = useState<
     'openai' | 'anthropic' | 'google' | 'ollama'
-  >('openai');
+  >('ollama');
 
   // Cache for projects and milestones
   const [projectsCache, setProjectsCache] = useState<{
