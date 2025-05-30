@@ -111,7 +111,7 @@ export class GitLabClient implements PlatformClient {
       // 1. Get project milestones for the specific project
       try {
         const projectMilestones = await this.makeRequest(
-          `/projects/${projectId}/milestones?state=active`
+          `/projects/${projectId}/milestones?state=active&per_page=100`
         );
         milestones.push(
           ...projectMilestones.map((milestone: any) => ({
@@ -216,18 +216,35 @@ export class GitLabClient implements PlatformClient {
 
       // 1. Get direct group milestones
       try {
-        const groupMilestones = await this.makeRequest(
-          `/groups/${groupId}/milestones?state=active`
-        );
-        milestones.push(
-          ...groupMilestones.map((milestone: any) => ({
-            id: `group_${milestone.id}`,
-            title: milestone.title,
-            description: milestone.description || '',
-            type: 'group',
-            groupName: group.full_path,
-          }))
-        );
+        let page = 1;
+        let hasMore = true;
+
+        while (hasMore) {
+          const groupMilestones = await this.makeRequest(
+            `/groups/${groupId}/milestones?state=active&per_page=100&page=${page}`
+          );
+
+          if (groupMilestones.length === 0) {
+            hasMore = false;
+          } else {
+            milestones.push(
+              ...groupMilestones.map((milestone: any) => ({
+                id: `group_${milestone.id}`,
+                title: milestone.title,
+                description: milestone.description || '',
+                type: 'group',
+                groupName: group.full_path,
+              }))
+            );
+
+            // If we got less than 100, we've reached the end
+            if (groupMilestones.length < 100) {
+              hasMore = false;
+            } else {
+              page++;
+            }
+          }
+        }
       } catch (error) {
         console.error(`Failed to fetch milestones for group ${groupId}:`, error);
       }
@@ -237,18 +254,35 @@ export class GitLabClient implements PlatformClient {
         const subgroups = await this.makeRequest(`/groups/${groupId}/subgroups`);
         for (const subgroup of subgroups) {
           try {
-            const subgroupMilestones = await this.makeRequest(
-              `/groups/${subgroup.id}/milestones?state=active`
-            );
-            milestones.push(
-              ...subgroupMilestones.map((milestone: any) => ({
-                id: `subgroup_${milestone.id}`,
-                title: milestone.title,
-                description: milestone.description || '',
-                type: 'subgroup',
-                groupName: subgroup.full_path,
-              }))
-            );
+            let page = 1;
+            let hasMore = true;
+
+            while (hasMore) {
+              const subgroupMilestones = await this.makeRequest(
+                `/groups/${subgroup.id}/milestones?state=active&per_page=100&page=${page}`
+              );
+
+              if (subgroupMilestones.length === 0) {
+                hasMore = false;
+              } else {
+                milestones.push(
+                  ...subgroupMilestones.map((milestone: any) => ({
+                    id: `subgroup_${milestone.id}`,
+                    title: milestone.title,
+                    description: milestone.description || '',
+                    type: 'subgroup',
+                    groupName: subgroup.full_path,
+                  }))
+                );
+
+                // If we got less than 100, we've reached the end
+                if (subgroupMilestones.length < 100) {
+                  hasMore = false;
+                } else {
+                  page++;
+                }
+              }
+            }
 
             // Recursively get milestones from nested subgroups
             await this.getAllGroupMilestones(subgroup.id, milestones);
@@ -279,7 +313,7 @@ export class GitLabClient implements PlatformClient {
           for (const project of projects) {
             try {
               const projectMilestones = await this.makeRequest(
-                `/projects/${project.id}/milestones?state=active`
+                `/projects/${project.id}/milestones?state=active&per_page=100`
               );
               milestones.push(
                 ...projectMilestones.map((milestone: any) => ({
@@ -412,5 +446,40 @@ export class GitLabClient implements PlatformClient {
 
     // Fallback for plain numeric IDs
     return parseInt(milestoneId);
+  }
+
+  // Helper function to fetch all milestones with pagination
+  private async fetchAllMilestones(baseUrl: string): Promise<any[]> {
+    const allMilestones: any[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      try {
+        const url = baseUrl.includes('?')
+          ? `${baseUrl}&per_page=100&page=${page}`
+          : `${baseUrl}?per_page=100&page=${page}`;
+
+        const milestones = await this.makeRequest(url);
+
+        if (milestones.length === 0) {
+          hasMore = false;
+        } else {
+          allMilestones.push(...milestones);
+
+          // If we got less than 100, we've reached the end
+          if (milestones.length < 100) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to fetch page ${page} from ${baseUrl}:`, error);
+        hasMore = false;
+      }
+    }
+
+    return allMilestones;
   }
 }
