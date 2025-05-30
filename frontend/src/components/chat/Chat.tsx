@@ -1,495 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useChat, type TicketData } from '../../contexts/ChatContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useChat } from '../../hooks/useChat';
+import type { TicketData } from '../../hooks/useChat';
 import { useToast } from '../../contexts/ToastContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import CustomSelect from '../ui/CustomSelect';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import axios from 'axios';
-
-// Custom component for syntax highlighted code blocks
-const CodeBlock = ({ children, className, addToast, ...props }: any) => {
-  const match = /language-(\w+)/.exec(className || '');
-  const language = match ? match[1] : '';
-  
-  // Determine theme based on current theme - check both class and localStorage
-  const isDark = document.documentElement.classList.contains('dark') || 
-                localStorage.theme === 'dark' || 
-                (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  const style = isDark ? oneDark : oneLight;
-  
-  const code = String(children).replace(/\n$/, '');
-  
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      if (addToast) {
-        addToast(`${language.toUpperCase()} code copied to clipboard!`, 'success');
-      }
-    } catch (err) {
-      console.error('Failed to copy code: ', err);
-      if (addToast) {
-        addToast('Failed to copy code to clipboard', 'error');
-      }
-    }
-  };
-  
-  return match ? (
-    <div className="relative group">
-      <SyntaxHighlighter
-        style={style}
-        language={language}
-        PreTag="div"
-        className="rounded-md text-sm my-2"
-        showLineNumbers={['sql', 'javascript', 'typescript', 'python', 'java', 'cpp', 'csharp', 'php', 'go', 'rust'].includes(language)}
-        customStyle={{
-          margin: '0.5rem 0',
-          fontSize: '0.875rem',
-          lineHeight: '1.25rem'
-        }}
-        {...props}
-      >
-        {code}
-      </SyntaxHighlighter>
-      
-      {/* Copy button for code blocks */}
-      <button
-        onClick={copyCode}
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-gray-800 dark:bg-gray-600 hover:bg-gray-900 dark:hover:bg-gray-500 text-gray-300 hover:text-white rounded-md transition-all duration-200 hover:scale-110"
-        title={`Copy ${language} code`}
-      >
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-      </button>
-    </div>
-  ) : (
-    <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm" {...props}>
-      {children}
-    </code>
-  );
-};
-
-// Custom component for AI responses with analysis and tickets
-function AIResponseMessage({ 
-  aiResponse, 
-  editingTickets, 
-  editedTickets, 
-  updateEditedTicket, 
-  startEditing, 
-  saveEdit, 
-  cancelEdit, 
-  cleanAIResponse, 
-  copyToClipboard, 
-  openProjectSelector,
-  addToast
-}: any) {
-  const [analysisExpanded, setAnalysisExpanded] = useState(false);
-
-  return (
-    <div className="space-y-4">
-      {/* Collapsible Initial Analysis */}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800">
-        <button
-          onClick={() => setAnalysisExpanded(!analysisExpanded)}
-          className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-xl"
-        >
-          <div className="flex items-center space-x-3">
-            <span className="text-lg font-semibold text-gray-900 dark:text-white">
-              Initial Analysis
-            </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                copyToClipboard(aiResponse.response);
-              }}
-              className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
-              title="Copy AI response"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </button>
-          </div>
-          <svg 
-            className={`w-5 h-5 text-gray-500 transition-transform ${analysisExpanded ? 'rotate-180' : ''}`} 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        
-        {analysisExpanded && (
-          <div className="px-4 pb-4 border-t border-gray-200 dark:border-gray-600">
-            <div className="mt-3 leading-relaxed">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h1: ({children}) => <h1 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">{children}</h1>,
-                  h2: ({children}) => <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">{children}</h2>,
-                  h3: ({children}) => <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">{children}</h3>,
-                  p: ({children}) => <p className="text-gray-700 dark:text-gray-300 mb-2">{children}</p>,
-                  ul: ({children}) => <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mb-2 space-y-1">{children}</ul>,
-                  ol: ({children}) => <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 mb-2 space-y-1">{children}</ol>,
-                  li: ({children}) => <li className="text-gray-700 dark:text-gray-300">{children}</li>,
-                  strong: ({children}) => <strong className="font-semibold text-gray-700 dark:text-gray-300">{children}</strong>,
-                  a: ({href, children}) => (
-                    <a 
-                      href={href} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline decoration-blue-600 dark:decoration-blue-400 hover:decoration-blue-800 dark:hover:decoration-blue-300 underline-offset-2 transition-colors duration-200 font-medium"
-                    >
-                      {children}
-                    </a>
-                  ),
-                  code: (props) => <CodeBlock {...props} addToast={addToast} />,
-                  pre: ({children}) => <div className="my-2">{children}</div>
-                }}
-              >
-                {cleanAIResponse(aiResponse.response)}
-              </ReactMarkdown>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Editable User Stories */}
-      {aiResponse?.tickets && aiResponse.tickets.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Generated User Stories
-            </h3>
-          </div>
-          <div className="space-y-4">
-            {aiResponse.tickets.map((ticket: TicketData, index: number) => {
-              const isEditing = editingTickets[index];
-              const currentTicket = isEditing ? editedTickets[index] : ticket;
-              
-              // Function to copy ticket content
-              const copyTicket = async () => {
-                const ticketText = `${ticket.title}
-
-User Story: ${ticket.description}
-
-Acceptance Criteria:
-${ticket.acceptanceCriteria.map((criteria, i) => `${i + 1}. ${criteria}`).join('\n')}
-
-Tasks:
-${ticket.tasks.map(task => `- ${task}`).join('\n')}
-
-Priority: ${ticket.priority}
-Labels: ${ticket.labels.join(', ')}`;
-                
-                try {
-                  await navigator.clipboard.writeText(ticketText);
-                  addToast(`Ticket "${ticket.title}" copied to clipboard!`, 'success');
-                } catch (err) {
-                  console.error('Failed to copy ticket: ', err);
-                  addToast('Failed to copy ticket to clipboard', 'error');
-                }
-              };
-              
-              return (
-                <div
-                  key={index}
-                  className="border border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-gray-50 dark:bg-gray-800 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={currentTicket.title}
-                        onChange={(e) => updateEditedTicket(index, 'title', e.target.value)}
-                        className="flex-1 text-lg font-semibold bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white mr-4"
-                      />
-                    ) : (
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-lg flex-1">
-                        {ticket.title}
-                      </h4>
-                    )}
-                    <div className="flex items-center space-x-2">
-                      {isEditing ? (
-                        <select
-                          value={currentTicket.priority}
-                          onChange={(e) => updateEditedTicket(index, 'priority', e.target.value as any)}
-                          className="px-3 py-1 text-xs rounded-full font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="critical">Critical</option>
-                        </select>
-                      ) : (
-                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-                          ticket.priority === 'critical' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' :
-                          ticket.priority === 'high' ? 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200' :
-                          ticket.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200' :
-                          'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        }`}>
-                          {ticket.priority}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      User Story:
-                    </h5>
-                    {isEditing ? (
-                      <textarea
-                        value={currentTicket.description}
-                        onChange={(e) => updateEditedTicket(index, 'description', e.target.value)}
-                        rows={3}
-                        className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-                      />
-                    ) : (
-                      <p className="text-gray-600 dark:text-gray-400 leading-relaxed italic">
-                        {ticket.description}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {currentTicket.acceptanceCriteria.length > 0 && (
-                    <div className="mb-4">
-                      <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                        Acceptance Criteria:
-                      </h5>
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          {currentTicket.acceptanceCriteria.map((criteria: string, i: number) => (
-                            <div key={i} className="flex items-center space-x-2">
-                              <span className="text-green-500 font-medium">{i + 1}.</span>
-                              <input
-                                type="text"
-                                value={criteria}
-                                onChange={(e) => {
-                                  const newCriteria = [...currentTicket.acceptanceCriteria];
-                                  newCriteria[i] = e.target.value;
-                                  updateEditedTicket(index, 'acceptanceCriteria', newCriteria);
-                                }}
-                                className="flex-1 p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-900 dark:text-white"
-                              />
-                              <button
-                                onClick={() => {
-                                  const newCriteria = currentTicket.acceptanceCriteria.filter((_: string, idx: number) => idx !== i);
-                                  updateEditedTicket(index, 'acceptanceCriteria', newCriteria);
-                                }}
-                                className="text-red-500 hover:text-red-700 p-1"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => {
-                              const newCriteria = [...currentTicket.acceptanceCriteria, 'New criteria'];
-                              updateEditedTicket(index, 'acceptanceCriteria', newCriteria);
-                            }}
-                            className="text-green-600 hover:text-green-800 text-sm font-medium"
-                          >
-                            + Add Criteria
-                          </button>
-                        </div>
-                      ) : (
-                        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                          {ticket.acceptanceCriteria.map((criteria: string, i: number) => (
-                            <li key={i} className="flex items-start">
-                              <span className="text-green-500 mr-2 mt-1 font-medium">{i + 1}.</span>
-                              {criteria}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-
-                  {currentTicket.tasks.length > 0 && (
-                    <div className="mb-4">
-                      <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                        Tasks:
-                      </h5>
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          {currentTicket.tasks.map((task: string, i: number) => (
-                            <div key={i} className="flex items-center space-x-2">
-                              <span className="text-blue-500">☐</span>
-                              <input
-                                type="text"
-                                value={task}
-                                onChange={(e) => {
-                                  const newTasks = [...currentTicket.tasks];
-                                  newTasks[i] = e.target.value;
-                                  updateEditedTicket(index, 'tasks', newTasks);
-                                }}
-                                className="flex-1 p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-900 dark:text-white"
-                              />
-                              <button
-                                onClick={() => {
-                                  const newTasks = currentTicket.tasks.filter((_: string, idx: number) => idx !== i);
-                                  updateEditedTicket(index, 'tasks', newTasks);
-                                }}
-                                className="text-red-500 hover:text-red-700 p-1"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => {
-                              const newTasks = [...currentTicket.tasks, 'New task'];
-                              updateEditedTicket(index, 'tasks', newTasks);
-                            }}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            + Add Task
-                          </button>
-                        </div>
-                      ) : (
-                        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                          {ticket.tasks.map((task: string, i: number) => (
-                            <li key={i} className="flex items-start">
-                              <span className="text-blue-500 mr-2 mt-1">☐</span>
-                              {task}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-600">
-                    <div className="flex flex-wrap gap-2">
-                      {isEditing ? (
-                        <div className="flex flex-wrap gap-2 items-center">
-                          {currentTicket.labels.map((label: string, i: number) => (
-                            <div key={i} className="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 rounded px-2 py-1">
-                              <input
-                                type="text"
-                                value={label}
-                                onChange={(e) => {
-                                  const newLabels = [...currentTicket.labels];
-                                  newLabels[i] = e.target.value;
-                                  updateEditedTicket(index, 'labels', newLabels);
-                                }}
-                                className="bg-transparent text-xs text-gray-900 dark:text-white border-none outline-none w-16"
-                              />
-                              <button
-                                onClick={() => {
-                                  const newLabels = currentTicket.labels.filter((_: string, idx: number) => idx !== i);
-                                  updateEditedTicket(index, 'labels', newLabels);
-                                }}
-                                className="text-red-500 hover:text-red-700 text-xs"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => {
-                              const newLabels = [...currentTicket.labels, 'new-label'];
-                              updateEditedTicket(index, 'labels', newLabels);
-                            }}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 border border-dashed border-blue-300 rounded"
-                          >
-                            + Add Label
-                          </button>
-                        </div>
-                      ) : (
-                        currentTicket.labels.map((label: string, i: number) => (
-                          <span
-                            key={i}
-                            className={`px-3 py-1 text-xs rounded-full font-medium ${
-                              label === 'user-story' ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200' :
-                              label === 'frontend' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
-                              label === 'backend' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' :
-                              label === 'database' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200' :
-                              label === 'authentication' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' :
-                              'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                            }`}
-                          >
-                            {label}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      {isEditing ? (
-                        <>
-                          <button
-                            onClick={() => saveEdit(index)}
-                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => cancelEdit(index)}
-                            className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => startEditing(index, ticket)}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={copyTicket}
-                            className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors flex items-center space-x-1"
-                            title="Copy ticket"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            <span>Copy</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          
-          {/* Create Tickets Button at the bottom */}
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={openProjectSelector}
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Create {aiResponse.tickets.length} Ticket{aiResponse.tickets.length > 1 ? 's' : ''}</span>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import CodeBlock from './CodeBlock';
+import AIResponseMessage from './AIResponseMessage';
+import ConversationStarters from './ConversationStarters';
+import type { Message, Platform, Project, Milestone, PlatformTicket, ApiError, TicketCreationResponse, TicketFieldValue } from '../../types';
 
 export default function Chat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const { user } = useAuth();
-  const { sendMessage, loading, currentConversation, setCurrentConversation, conversations } = useChat();
+  const { sendMessage, loading, setCurrentConversation, conversations } = useChat();
   const { addToast } = useToast();
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [aiResponse, setAiResponse] = useState<{
     response: string;
     tickets?: TicketData[];
@@ -499,10 +30,10 @@ export default function Chat() {
   const [editingTickets, setEditingTickets] = useState<{[key: number]: boolean}>({});
   const [editedTickets, setEditedTickets] = useState<{[key: number]: TicketData}>({});
   const [showProjectSelector, setShowProjectSelector] = useState(false);
-  const [availablePlatforms, setAvailablePlatforms] = useState<any[]>([]);
+  const [availablePlatforms, setAvailablePlatforms] = useState<Platform[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('');
-  const [projects, setProjects] = useState<any[]>([]);
-  const [milestones, setMilestones] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('');
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -561,7 +92,7 @@ export default function Chat() {
         
         // Find the last AI response with tickets
         const lastAiMessage = conversationData.messages
-          .filter((msg: any) => msg.role === 'assistant' && msg.metadata)
+          .filter((msg: Message) => msg.role === 'assistant' && msg.metadata)
           .pop();
           
         if (lastAiMessage?.metadata) {
@@ -579,17 +110,18 @@ export default function Chat() {
           }
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to load conversation:', error);
-      if (error.response?.status === 401) {
+      const apiError = error as ApiError;
+      if (apiError.status === 401) {
         addToast('Session expired. Please log in again.', 'error');
         localStorage.removeItem('token');
         navigate('/login');
-      } else if (error.response?.status === 404) {
+      } else if (apiError.status === 404) {
         addToast('Conversation not found', 'error');
         navigate('/chat');
       } else {
-        addToast(`Failed to load conversation: ${error.message}`, 'error');
+        addToast(`Failed to load conversation: ${apiError.message || 'Unknown error'}`, 'error');
       }
     } finally {
       setLoadingConversation(false);
@@ -667,7 +199,7 @@ export default function Chat() {
     });
   };
 
-  const updateEditedTicket = (index: number, field: keyof TicketData, value: any) => {
+  const updateEditedTicket = (index: number, field: keyof TicketData, value: TicketFieldValue) => {
     setEditedTickets(prev => ({
       ...prev,
       [index]: {
@@ -750,12 +282,13 @@ export default function Chat() {
       
       // Set aiResponse for ticket creation functionality
       setAiResponse(response);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending message:', error);
+      const apiError = error as ApiError;
       const errorMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
-        content: `Sorry, I encountered an error: ${error.message}. Please make sure you have configured at least one AI API key in the backend .env file.`,
+        content: `Sorry, I encountered an error: ${apiError.message || 'Unknown error'}. Please make sure you have configured at least one AI API key in the backend .env file.`,
         createdAt: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -792,17 +325,6 @@ export default function Chat() {
   useEffect(() => {
     adjustTextareaHeight();
   }, [input]);
-
-  const conversationStarters = [
-    'Create a user authentication system',
-    'How does JWT authentication work?',
-    'Build a REST API for a blog',
-    'What are the best practices for API design?',
-    'Implement a payment gateway',
-    'Explain how OAuth works',
-    'Design a dashboard with analytics',
-    'Help me understand microservices architecture',
-  ];
 
   const isNewConversation = !conversationId && messages.length === 0;
   const isLoadingConversation = conversationId && loadingConversation;
@@ -868,7 +390,7 @@ export default function Chat() {
         milestoneId: selectedMilestone || undefined
       });
       
-      const { platformTickets, message } = response.data;
+      const { platformTickets, message } = response.data as TicketCreationResponse;
       
       // Show success toast
       addToast(message, 'success');
@@ -879,7 +401,7 @@ export default function Chat() {
 
 I've created ${platformTickets.length} ticket${platformTickets.length > 1 ? 's' : ''} on your platform:
 
-${platformTickets.map((ticket: any, index: number) => 
+${platformTickets.map((ticket: PlatformTicket, index: number) => 
           `**${index + 1}.** [${ticket.title}](${ticket.url}) - Issue #${ticket.number}`
         ).join('\n\n')}
 
@@ -933,45 +455,11 @@ You can click on any ticket title above to view it on your platform. All tickets
               <p className="text-gray-600 dark:text-gray-400 mt-4">Loading conversation...</p>
             </div>
           ) : isNewConversation ? (
-            <div className="flex flex-col items-center justify-center h-full py-8">
-              {/* Welcome Message */}
-              <div className="text-center space-y-8 w-full max-w-4xl">
-                <div className="space-y-4">
-                  <h1 className="text-3xl font-medium text-gray-900 dark:text-white">
-                    AI Ticket Generator
-                  </h1>
-                  <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                    Describe your requirements and I'll create structured tickets for you
-                  </p>
-                </div>
-                
-                <div className="space-y-6">
-                  <h2 className="text-2xl font-medium text-gray-900 dark:text-white">
-                    Hi {user?.username}, what should we build into tickets today?
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-                    I can help you create well-structured tickets from your ideas. Just describe what you need 
-                    and I'll break it down into actionable tasks.
-                  </p>
-                </div>
-
-                {/* Conversation Starters */}
-                <div className="w-full max-w-4xl mt-12">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {conversationStarters.map((starter, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSend(starter)}
-                        disabled={loading}
-                        className="p-4 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 transition-all duration-200 text-left disabled:opacity-50 hover:shadow-md"
-                      >
-                        {starter}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ConversationStarters 
+              username={user?.username}
+              handleSend={handleSend}
+              loading={loading}
+            />
           ) : (
             <div className="py-8 min-h-full">
               <div className="space-y-6">

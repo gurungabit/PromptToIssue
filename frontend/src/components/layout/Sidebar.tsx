@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useChat } from '../../contexts/ChatContext';
+import { useChat } from '../../hooks/useChat';
 import { useToast } from '../../contexts/ToastContext';
 
 interface SidebarProps {
@@ -57,8 +57,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       
       await deleteConversation(conversationId);
       addToast('Conversation deleted successfully', 'success');
-    } catch (error: any) {
-      addToast(error.message || 'Failed to delete conversation', 'error');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete conversation';
+      addToast(errorMessage, 'error');
       // If deletion failed and we already navigated, we might want to stay on current page
       // But for now, let's just show the error
     }
@@ -77,8 +78,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       
       // Redirect to new chat since all conversations were deleted
       navigate('/chat');
-    } catch (error: any) {
-      addToast(error.message || 'Failed to delete conversations', 'error');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete conversations';
+      addToast(errorMessage, 'error');
     }
   };
 

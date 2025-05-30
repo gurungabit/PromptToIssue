@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '../contexts/ToastContext';
 
@@ -74,21 +74,11 @@ export default function Settings() {
       setShowAddPlatform(false);
       await loadPlatforms();
       addToast('Platform added successfully!', 'success');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to add platform:', error);
-      console.error('Backend response:', error.response?.data);
       
       let errorMessage = 'Failed to add platform';
-      if (error.response?.data?.error) {
-        if (typeof error.response.data.error === 'string') {
-          errorMessage = error.response.data.error;
-        } else if (typeof error.response.data.error === 'object') {
-          // Handle object errors (like GitLab validation errors)
-          errorMessage = error.response.data.error.message || 
-                        error.response.data.error.error || 
-                        JSON.stringify(error.response.data.error);
-        }
-      } else if (error.message) {
+      if (error instanceof Error) {
         errorMessage = error.message;
       }
       
@@ -103,19 +93,12 @@ export default function Settings() {
       await axios.post(`/api/protected/platforms/${platformId}/test`);
       addToast('Connection successful!', 'success');
       await loadPlatforms();
-    } catch (error: any) {
+    } catch (error) {
       let errorMessage = 'Connection failed';
-      if (error.response?.data?.error) {
-        if (typeof error.response.data.error === 'string') {
-          errorMessage = error.response.data.error;
-        } else if (typeof error.response.data.error === 'object') {
-          errorMessage = error.response.data.error.message || 
-                        error.response.data.error.error || 
-                        JSON.stringify(error.response.data.error);
-        }
-      } else if (error.message) {
+      if (error instanceof Error) {
         errorMessage = error.message;
       }
+      
       addToast(errorMessage, 'error');
     }
     setTesting(false);

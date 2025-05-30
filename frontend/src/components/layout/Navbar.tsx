@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
 
 interface NavbarProps {
-  onMenuClick: () => void;
-  sidebarOpen: boolean;
+  onSidebarToggle: () => void;
 }
 
-export default function Navbar({ onMenuClick, sidebarOpen }: NavbarProps) {
+export default function Navbar({ onSidebarToggle }: NavbarProps) {
   const { user, logout } = useAuth();
-  const { theme, setTheme, isDark } = useTheme();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleThemeToggle = () => {
     if (theme === 'light') {
@@ -62,9 +61,9 @@ export default function Navbar({ onMenuClick, sidebarOpen }: NavbarProps) {
       {/* Left side - Menu button for mobile and desktop */}
       <div className="flex items-center">
         <button
-          onClick={onMenuClick}
+          onClick={onSidebarToggle}
           className="p-1.5 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          title="Hide sidebar"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h12M4 14h16M4 18h12" />
@@ -85,7 +84,7 @@ export default function Navbar({ onMenuClick, sidebarOpen }: NavbarProps) {
         {/* User Avatar Dropdown */}
         <div className="relative">
           <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+            onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -100,12 +99,12 @@ export default function Navbar({ onMenuClick, sidebarOpen }: NavbarProps) {
           </button>
 
           {/* Dropdown Menu */}
-          {dropdownOpen && (
+          {showUserMenu && (
             <>
               {/* Overlay to close dropdown */}
               <div 
                 className="fixed inset-0 z-10" 
-                onClick={() => setDropdownOpen(false)}
+                onClick={() => setShowUserMenu(false)}
               />
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
                 <div className="py-1">
@@ -115,7 +114,7 @@ export default function Navbar({ onMenuClick, sidebarOpen }: NavbarProps) {
                   <button
                     onClick={() => {
                       logout();
-                      setDropdownOpen(false);
+                      setShowUserMenu(false);
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >

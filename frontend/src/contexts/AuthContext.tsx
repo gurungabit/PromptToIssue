@@ -1,23 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
-
-interface User {
-  id: string;
-  email: string;
-  username: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, username: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext, type User } from '../hooks/useAuth';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -51,8 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('token', userToken);
       localStorage.setItem('user', JSON.stringify(userData));
       axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Login failed');
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
   };
 
@@ -66,8 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('token', userToken);
       localStorage.setItem('user', JSON.stringify(userData));
       axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Registration failed');
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
     }
   };
 
@@ -89,12 +75,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 } 
