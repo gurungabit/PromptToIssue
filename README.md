@@ -136,6 +136,9 @@ OPENAI_API_KEY=sk-your-openai-key
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
 GOOGLE_API_KEY=your-google-api-key
 
+# Local AI (Ollama) - optional
+OLLAMA_CONFIG=http://localhost:11434|mistral
+
 # Server
 PORT=3000
 NODE_ENV=development
@@ -279,15 +282,122 @@ PromptToIssue/
 | **OpenAI** | GPT-4 | General excellence, structured output | `OPENAI_API_KEY` |
 | **Anthropic** | Claude 3 | Safety, reasoning, long context | `ANTHROPIC_API_KEY` |
 | **Google** | Gemini Pro | Multimodal, fast, cost-effective | `GOOGLE_API_KEY` |
+| **Ollama** | Mistral/Llama | Local, private, no API limits | `OLLAMA_CONFIG` |
+
+### 🏠 Ollama (Local AI) Setup
+
+Ollama allows you to run AI models locally on your machine for complete privacy and no API costs.
+
+#### Installation
+
+**macOS:**
+```bash
+# Install via Homebrew
+brew install ollama
+
+# Or download from https://ollama.ai/download/macos
+```
+
+**Linux:**
+```bash
+# Install via script
+curl -fsSL https://ollama.ai/install.sh | sh
+```
+
+**Windows:**
+```bash
+# Download from https://ollama.ai/download/windows
+```
+
+#### Setup
+
+1. **Start Ollama server:**
+```bash
+ollama serve
+```
+
+2. **Pull a model (choose one):**
+```bash
+# Mistral 7B (recommended - good balance of speed/quality)
+ollama pull mistral
+
+# Llama 2 7B
+ollama pull llama2
+
+# Code Llama (better for programming tasks)
+ollama pull codellama
+
+# Phi-2 (lighter model for faster responses)
+ollama pull phi
+```
+
+3. **Test the model:**
+```bash
+ollama run mistral
+# Type "Hello!" and press Enter to test
+# Type /bye to exit
+```
+
+4. **Configure your app:**
+```env
+# In backend/.env
+OLLAMA_CONFIG=http://localhost:11434|mistral
+
+# For different models:
+# OLLAMA_CONFIG=http://localhost:11434|llama2
+# OLLAMA_CONFIG=http://localhost:11434|codellama
+# OLLAMA_CONFIG=http://localhost:11434|phi
+```
+
+#### Model Recommendations
+
+| Model | Size | Speed | Quality | Use Case |
+|-------|------|-------|---------|----------|
+| **mistral** | 4.1GB | Fast | High | General purpose, tickets |
+| **llama2** | 3.8GB | Fast | Good | Chat, assistance |
+| **codellama** | 3.8GB | Fast | High | Code generation, tech tickets |
+| **phi** | 1.6GB | Very Fast | Good | Quick responses, lightweight |
+
+#### Performance Tips
+
+- **Memory**: Ensure you have at least 8GB RAM (16GB+ recommended)
+- **Storage**: Models require 2-7GB disk space each
+- **CPU**: Better performance with more CPU cores
+- **GPU**: NVIDIA GPUs provide significant speedup (optional)
+
+#### Troubleshooting
+
+**Connection Issues:**
+```bash
+# Check if Ollama is running
+curl http://localhost:11434/api/tags
+
+# Restart Ollama service
+pkill ollama && ollama serve
+```
+
+**Model Not Found:**
+```bash
+# List available models
+ollama list
+
+# Pull missing model
+ollama pull mistral
+```
+
+**Slow Performance:**
+- Try smaller models like `phi` or `tinyllama`
+- Increase temperature for faster, less precise responses
+- Consider cloud AI providers for better performance
 
 ### Intelligent Fallback System
 
 ```typescript
 // Automatic provider fallback on failure
-Primary Provider (OpenAI) ──✗──► Fallback 1 (Anthropic) ──✗──► Fallback 2 (Google)
-        │                              │                              │
-        ✓                              ✓                              ✓
-     Success                        Success                        Success
+Primary Provider (OpenAI) ──✗──► Fallback 1 (Anthropic) ──✗──► Fallback 2 (Google) ──✗──► Fallback 3 (Ollama)
+        │                              │                              │                              │
+        ✓                              ✓                              ✓                              ✓
+     Success                        Success                        Success                        Success
 ```
 
 ### Chat Modes

@@ -1,6 +1,7 @@
 import { OpenAIProvider } from './openai.js';
 import { AnthropicProvider } from './anthropic.js';
 import { GoogleProvider } from './google.js';
+import { OllamaProvider } from './ollama.js';
 import type { AIProvider, AIProviderType, AIMessage, AIResponse } from './types.js';
 import { z } from 'zod';
 
@@ -16,6 +17,14 @@ export class AIService {
     }
     if (apiKeys.google) {
       this.providers.set('google', new GoogleProvider(apiKeys.google));
+    }
+    if (apiKeys.ollama) {
+      // For Ollama, the "API key" is actually the base URL and model
+      // Format: "http://localhost:11434|mistral" or just "ollama" for defaults
+      const [baseUrl, model] = apiKeys.ollama.includes('|')
+        ? apiKeys.ollama.split('|')
+        : ['http://localhost:11434', apiKeys.ollama === 'ollama' ? 'mistral' : apiKeys.ollama];
+      this.providers.set('ollama', new OllamaProvider(baseUrl, model));
     }
   }
 

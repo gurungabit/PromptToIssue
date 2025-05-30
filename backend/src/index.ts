@@ -34,6 +34,7 @@ const aiService = new AIService({
   openai: process.env.OPENAI_API_KEY,
   anthropic: process.env.ANTHROPIC_API_KEY,
   google: process.env.GOOGLE_API_KEY,
+  ollama: process.env.OLLAMA_CONFIG || 'ollama', // Default to localhost:11434 with mistral
 });
 
 // Middleware
@@ -65,7 +66,7 @@ const loginSchema = z.object({
 const chatSchema = z.object({
   message: z.string(),
   conversationId: z.string().optional(),
-  aiModel: z.enum(['openai', 'anthropic', 'google']).optional(),
+  aiModel: z.enum(['openai', 'anthropic', 'google', 'ollama']).optional(),
   mode: z.enum(['ticket', 'assistant']).optional().default('ticket'),
 });
 

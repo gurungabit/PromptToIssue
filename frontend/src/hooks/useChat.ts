@@ -27,7 +27,7 @@ export interface Message {
 export interface Conversation {
   id: string;
   title: string;
-  aiModel: 'openai' | 'anthropic' | 'google';
+  aiModel: 'openai' | 'anthropic' | 'google' | 'ollama';
   status: string;
   createdAt: string;
   updatedAt: string;

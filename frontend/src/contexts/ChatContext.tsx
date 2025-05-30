@@ -91,7 +91,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         const newConversation: Conversation = {
           id: response.data.conversationId,
           title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
-          aiModel: (aiModel || 'openai') as 'openai' | 'anthropic' | 'google',
+          aiModel: (aiModel || 'openai') as 'openai' | 'anthropic' | 'google' | 'ollama',
           status: 'active',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),

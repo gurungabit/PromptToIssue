@@ -50,6 +50,9 @@ export default function Chat() {
   const [loadingMilestones, setLoadingMilestones] = useState(false);
   const [creatingTickets, setCreatingTickets] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
+  const [selectedAiModel, setSelectedAiModel] = useState<
+    'openai' | 'anthropic' | 'google' | 'ollama'
+  >('openai');
 
   // Cache for projects and milestones
   const [projectsCache, setProjectsCache] = useState<{
@@ -285,7 +288,7 @@ export default function Chat() {
     setTimeout(() => adjustTextareaHeight(), 0);
 
     try {
-      const response = await sendMessage(message, conversationId, 'google', mode);
+      const response = await sendMessage(message, conversationId, selectedAiModel, mode);
 
       // Replace the loading message with the actual AI response
       const aiMessage = {
@@ -740,8 +743,28 @@ You can click on any ticket title above to view it on your platform. All tickets
       {/* Input Area - Fixed at bottom */}
       <div className='flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4'>
         <div className='max-w-4xl mx-auto px-8 lg:px-16'>
-          {/* Mode Toggle - positioned in top right */}
-          <div className='flex justify-end mb-3'>
+          {/* AI Model & Mode Controls */}
+          <div className='flex justify-between items-center mb-3'>
+            {/* AI Model Selector */}
+            <div className='flex items-center space-x-3'>
+              <label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                AI Model:
+              </label>
+              <select
+                value={selectedAiModel}
+                onChange={e =>
+                  setSelectedAiModel(e.target.value as 'openai' | 'anthropic' | 'google' | 'ollama')
+                }
+                className='text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+              >
+                <option value='openai'>OpenAI GPT-4</option>
+                <option value='anthropic'>Anthropic Claude</option>
+                <option value='google'>Google Gemini</option>
+                <option value='ollama'>Ollama (Local)</option>
+              </select>
+            </div>
+
+            {/* Mode Toggle - positioned in top right */}
             <ModeToggle />
           </div>
 

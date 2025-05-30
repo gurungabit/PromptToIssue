@@ -33,4 +33,4 @@ export interface AIProvider {
   parseTickets(input: string): Promise<TicketData[]>;
 }
 
-export type AIProviderType = 'openai' | 'anthropic' | 'google';
+export type AIProviderType = 'openai' | 'anthropic' | 'google' | 'ollama';
