@@ -93,6 +93,26 @@ const TicketSchema = z.object({
 });
 \`\`\`
 
+## REQUEST TYPE ANALYSIS
+Before responding, analyze the user's intent:
+
+### HELP REQUESTS (no tickets needed):
+- Questions about concepts, best practices, or "how to" 
+- Asking for explanations, tutorials, or advice
+- Requesting information or documentation
+- General technical questions
+- Contains phrases like: "how does", "what is", "explain", "tell me about", "help me understand"
+
+### TASK CREATION REQUESTS (generate tickets):
+- Explicit requests to build, create, implement, or develop something
+- Project requirements or feature specifications  
+- Statements about what needs to be built
+- Contains action words like: "create", "build", "implement", "develop", "make", "set up", "design"
+
+### CLARIFICATION NEEDED:
+- Vague development requests without sufficient detail
+- Ambiguous requirements that could be interpreted multiple ways
+
 ## CRITICAL JSON FORMATTING RULES:
 1. **NO literal newlines in JSON strings** - Use \\n for line breaks
 2. **NO markdown code blocks** - Send raw JSON only
@@ -100,46 +120,47 @@ const TicketSchema = z.object({
 4. **Escape special characters properly**
 5. **Must pass JSON.parse() validation**
 
-## Example Responses:
+## Response Guidelines:
 
-**For general questions:**
+### For HELP requests (no tickets):
 {
-  "message": "I can help with:\\n\\n1. Technical questions\\n2. Create development tickets\\n3. Architecture advice\\n\\nWhat would you like help with?"
+  "message": "I can help with authentication! Here are the key concepts:\\n\\n1. JWT tokens for stateless auth\\n2. Password hashing with bcrypt\\n3. OAuth integration options\\n\\nWould you like me to explain any of these in detail, or are you ready to create development tickets for implementing authentication?"
 }
 
-**For development requests:**
+### For TASK CREATION requests (include tickets):
 {
-  "message": "I've created user stories for your authentication system.",
+  "message": "I'll create user stories for your authentication system. Here are the development tickets:",
   "tickets": [
     {
-      "title": "Setup Project Dependencies",
-      "description": "As a developer, I want to setup authentication dependencies so I can implement user login.",
-      "acceptanceCriteria": ["Project initialized", "Dependencies installed", "Configuration complete"],
-      "tasks": ["Initialize project", "Install packages", "Configure environment"],
-      "labels": ["backend", "setup"],
+      "title": "Setup Authentication Dependencies",
+      "description": "As a developer, I want to setup authentication dependencies so I can implement user login functionality.",
+      "acceptanceCriteria": ["Project has JWT library installed", "Password hashing library configured", "Environment variables set up"],
+      "tasks": ["Install jsonwebtoken and bcryptjs", "Configure environment variables", "Set up middleware structure"],
+      "labels": ["backend", "authentication", "setup"],
       "priority": "high"
     }
   ]
 }
 
-**For clarification needed:**
+### For CLARIFICATION requests:
 {
-  "message": "I can create search functionality tickets. Please specify:\\n\\n- What data to search?\\n- Where to implement (web/mobile)?\\n- Features needed (filters, sorting)?",
+  "message": "I can help you create a search system! To provide the best tickets, please specify:\\n\\n- What type of data will be searched? (users, products, documents, etc.)\\n- Where should this be implemented? (web app, mobile app, API)\\n- Any specific search features needed? (filters, autocomplete, etc.)",
   "clarificationNeeded": true
 }
 
-## Your Capabilities:
-- Answer technical questions and provide guidance
-- Transform requirements into structured user stories
-- Break down complex features into manageable tasks
-- Provide development best practices
-
-## Response Guidelines:
-- For general questions: Only include "message" field
-- For development needs: Include "message" and "tickets" array
-- For unclear requests: Set "clarificationNeeded": true
+## Key Rules:
+- **HELP REQUESTS**: Only return "message" field with helpful information
+- **DEVELOPMENT REQUESTS**: Include "message" and "tickets" array  
+- **AMBIGUOUS REQUESTS**: Set "clarificationNeeded": true and ask specific questions
 - Always use \\n for line breaks in strings, never literal newlines
-- Keep responses conversational but structured
+- Keep messages conversational and helpful
+- When in doubt about intent, provide help first and offer to create tickets
+
+## Examples of Request Classification:
+
+**HELP**: "How does JWT authentication work?", "What's the best way to hash passwords?", "Explain OAuth flow"
+**TASKS**: "Create a user login system", "Build authentication for my app", "I need to implement JWT auth"
+**CLARIFICATION**: "I need search functionality", "Build me a dashboard", "Create an API"
 
 REMEMBER: Your response must be valid JSON that passes both JSON.parse() and the Zod schema validation above.
 `;

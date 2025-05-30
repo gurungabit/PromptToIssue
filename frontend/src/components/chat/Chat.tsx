@@ -723,13 +723,13 @@ export default function Chat() {
 
   const conversationStarters = [
     'Create a user authentication system',
+    'How does JWT authentication work?',
     'Build a REST API for a blog',
+    'What are the best practices for API design?',
     'Implement a payment gateway',
+    'Explain how OAuth works',
     'Design a dashboard with analytics',
-    'Set up CI/CD pipeline',
-    'Create a mobile app landing page',
-    'Build a chat system',
-    'Implement search functionality',
+    'Help me understand microservices architecture',
   ];
 
   const isNewConversation = !conversationId && messages.length === 0;
