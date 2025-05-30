@@ -6,6 +6,7 @@ import type { TicketData } from '../../hooks/useChat';
 import { useToast } from '../../contexts/ToastContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import CustomSelect from '../ui/CustomSelect';
+import MilestoneSelector from '../ui/MilestoneSelector';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import axios from 'axios';
@@ -1053,18 +1054,11 @@ You can click on any ticket title above to view it on your platform. All tickets
                         </span>
                       </div>
                     ) : milestones.length > 0 ? (
-                      <CustomSelect
-                        options={milestones.map(milestone => ({
-                          value: milestone.id,
-                          label: milestone.title,
-                          description: milestone.description,
-                          type: milestone.type,
-                          groupName: milestone.groupName,
-                        }))}
+                      <MilestoneSelector
+                        milestones={milestones}
                         value={selectedMilestone}
                         onChange={setSelectedMilestone}
-                        placeholder='Select a milestone...'
-                        showGroups={true}
+                        placeholder='Select milestone or enter custom ID...'
                         className='w-full'
                       />
                     ) : (

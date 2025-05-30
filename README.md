@@ -185,6 +185,7 @@ graph LR
 **GitLab Integration:**
 - OAuth secure connection
 - Project and milestone selection
+- **Custom Milestone ID Support**: Enter milestone IDs manually if not found in dropdown
 - Automatic label assignment
 - Issue creation with full metadata
 
