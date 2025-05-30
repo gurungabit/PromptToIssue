@@ -33,7 +33,7 @@
     "react",
     "hono"
   ],
-  "author": "Your Name",
+  "author": "Abit",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
