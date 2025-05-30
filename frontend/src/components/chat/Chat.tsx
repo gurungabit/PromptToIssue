@@ -7,7 +7,72 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import CustomSelect from '../ui/CustomSelect';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import axios from 'axios';
+
+// Custom component for syntax highlighted code blocks
+const CodeBlock = ({ children, className, addToast, ...props }: any) => {
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match ? match[1] : '';
+  
+  // Determine theme based on current theme - check both class and localStorage
+  const isDark = document.documentElement.classList.contains('dark') || 
+                localStorage.theme === 'dark' || 
+                (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const style = isDark ? oneDark : oneLight;
+  
+  const code = String(children).replace(/\n$/, '');
+  
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      if (addToast) {
+        addToast(`${language.toUpperCase()} code copied to clipboard!`, 'success');
+      }
+    } catch (err) {
+      console.error('Failed to copy code: ', err);
+      if (addToast) {
+        addToast('Failed to copy code to clipboard', 'error');
+      }
+    }
+  };
+  
+  return match ? (
+    <div className="relative group">
+      <SyntaxHighlighter
+        style={style}
+        language={language}
+        PreTag="div"
+        className="rounded-md text-sm my-2"
+        showLineNumbers={['sql', 'javascript', 'typescript', 'python', 'java', 'cpp', 'csharp', 'php', 'go', 'rust'].includes(language)}
+        customStyle={{
+          margin: '0.5rem 0',
+          fontSize: '0.875rem',
+          lineHeight: '1.25rem'
+        }}
+        {...props}
+      >
+        {code}
+      </SyntaxHighlighter>
+      
+      {/* Copy button for code blocks */}
+      <button
+        onClick={copyCode}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-gray-800 dark:bg-gray-600 hover:bg-gray-900 dark:hover:bg-gray-500 text-gray-300 hover:text-white rounded-md transition-all duration-200 hover:scale-110"
+        title={`Copy ${language} code`}
+      >
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      </button>
+    </div>
+  ) : (
+    <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm" {...props}>
+      {children}
+    </code>
+  );
+};
 
 // Custom component for AI responses with analysis and tickets
 function AIResponseMessage({ 
@@ -77,8 +142,8 @@ function AIResponseMessage({
                   ol: ({children}) => <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 mb-2 space-y-1">{children}</ol>,
                   li: ({children}) => <li className="text-gray-700 dark:text-gray-300">{children}</li>,
                   strong: ({children}) => <strong className="font-semibold text-gray-700 dark:text-gray-300">{children}</strong>,
-                  code: ({children}) => <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">{children}</code>,
-                  pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto">{children}</pre>
+                  code: (props) => <CodeBlock {...props} addToast={addToast} />,
+                  pre: ({children}) => <div className="my-2">{children}</div>
                 }}
               >
                 {cleanAIResponse(aiResponse.response)}
@@ -907,65 +972,83 @@ You can click on any ticket title above to view it on your platform. All tickets
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-8`}
                   >
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-6 py-4 ${
-                        message.role === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
-                      }`}
-                    >
-                      <div className="leading-relaxed">
-                        {message.role === 'user' ? (
-                          <div className="whitespace-pre-wrap">{message.content}</div>
-                        ) : (
-                          // Check if this is an AI message with tickets
-                          aiResponse?.tickets && aiResponse.tickets.length > 0 && 
-                          (message.content === aiResponse.response || 
-                           (message.metadata && JSON.parse(message.metadata as string)?.tickets)) ? (
-                            <AIResponseMessage
-                              message={message}
-                              aiResponse={aiResponse}
-                              editingTickets={editingTickets}
-                              setEditingTickets={setEditingTickets}
-                              editedTickets={editedTickets}
-                              setEditedTickets={setEditedTickets}
-                              updateEditedTicket={updateEditedTicket}
-                              startEditing={startEditing}
-                              saveEdit={saveEdit}
-                              cancelEdit={cancelEdit}
-                              cleanAIResponse={cleanAIResponse}
-                              copyToClipboard={copyToClipboard}
-                              openProjectSelector={openProjectSelector}
-                              addToast={addToast}
-                            />
+                    <div className="relative group max-w-[80%]">
+                      <div
+                        className={`rounded-2xl px-6 py-4 ${ 
+                          message.role === 'user'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        <div className="leading-relaxed">
+                          {message.role === 'user' ? (
+                            <div className="whitespace-pre-wrap">{message.content}</div>
                           ) : (
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                h1: ({children}) => <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{children}</h1>,
-                                h2: ({children}) => <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{children}</h2>,
-                                h3: ({children}) => <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">{children}</h3>,
-                                p: ({children}) => <p className="text-gray-900 dark:text-white mb-2">{children}</p>,
-                                ul: ({children}) => <ul className="list-disc list-inside text-gray-900 dark:text-white mb-2 space-y-1">{children}</ul>,
-                                ol: ({children}) => <ol className="list-decimal list-inside text-gray-900 dark:text-white mb-2 space-y-1">{children}</ol>,
-                                li: ({children}) => <li className="text-gray-900 dark:text-white">{children}</li>,
-                                strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
-                                code: ({children}) => <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">{children}</code>,
-                                pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto">{children}</pre>
-                              }}
-                            >
-                              {message.content}
-                            </ReactMarkdown>
-                          )
-                        )}
+                            // Check if this is an AI message with tickets
+                            aiResponse?.tickets && aiResponse.tickets.length > 0 && 
+                            (message.content === aiResponse.response || 
+                             (message.metadata && JSON.parse(message.metadata as string)?.tickets)) ? (
+                              <AIResponseMessage
+                                message={message}
+                                aiResponse={aiResponse}
+                                editingTickets={editingTickets}
+                                setEditingTickets={setEditingTickets}
+                                editedTickets={editedTickets}
+                                setEditedTickets={setEditedTickets}
+                                updateEditedTicket={updateEditedTicket}
+                                startEditing={startEditing}
+                                saveEdit={saveEdit}
+                                cancelEdit={cancelEdit}
+                                cleanAIResponse={cleanAIResponse}
+                                copyToClipboard={copyToClipboard}
+                                openProjectSelector={openProjectSelector}
+                                addToast={addToast}
+                              />
+                            ) : (
+                              <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  h1: ({children}) => <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{children}</h1>,
+                                  h2: ({children}) => <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{children}</h2>,
+                                  h3: ({children}) => <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">{children}</h3>,
+                                  p: ({children}) => <p className="text-gray-900 dark:text-white mb-2">{children}</p>,
+                                  ul: ({children}) => <ul className="list-disc list-inside text-gray-900 dark:text-white mb-2 space-y-1">{children}</ul>,
+                                  ol: ({children}) => <ol className="list-decimal list-inside text-gray-900 dark:text-white mb-2 space-y-1">{children}</ol>,
+                                  li: ({children}) => <li className="text-gray-900 dark:text-white">{children}</li>,
+                                  strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
+                                  em: ({children}) => <em className="italic text-gray-800 dark:text-gray-200">{children}</em>,
+                                  blockquote: ({children}) => <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-700 dark:text-gray-300 my-2">{children}</blockquote>,
+                                  code: (props) => <CodeBlock {...props} addToast={addToast} />,
+                                  pre: ({children}) => <div className="my-2">{children}</div>
+                                }}
+                              >
+                                {message.content}
+                              </ReactMarkdown>
+                            )
+                          )}
+                        </div>
+                        <div className={`text-xs mt-2 ${
+                          message.role === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                        }`}>
+                          {new Date(message.createdAt).toLocaleTimeString()}
+                        </div>
                       </div>
-                      <div className={`text-xs mt-2 ${
-                        message.role === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
-                      }`}>
-                        {new Date(message.createdAt).toLocaleTimeString()}
-                      </div>
+                      
+                      {/* Copy button at bottom */}
+                      <button
+                        onClick={() => copyToClipboard(message.content)}
+                        className={`absolute -bottom-6 ${
+                          message.role === 'user' ? 'right-0' : 'left-0'
+                        } opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1`}
+                        title="Copy message"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy
+                      </button>
                     </div>
                   </div>
                 ))}

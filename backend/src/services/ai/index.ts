@@ -155,6 +155,7 @@ Before responding, analyze the user's intent:
 - Always use \\n for line breaks in strings, never literal newlines
 - Keep messages conversational and helpful
 - When in doubt about intent, provide help first and offer to create tickets
+- **For code examples**: Use proper markdown code blocks with language specification (e.g., \\n\`\`\`sql\\n, \\n\`\`\`javascript\\n, \\n\`\`\`typescript\\n)
 
 ## Examples of Request Classification:
 
