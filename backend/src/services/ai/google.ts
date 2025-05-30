@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
-import type { AIProvider, AIMessage, AIResponse, TicketData } from './types.js';
+import type { AIProvider, AIMessage, AIResponse, TicketData, StructuredAIResponse } from './types.js';
+import { StructuredAIResponseSchema } from './schemas.js';
 
 export class GoogleProvider implements AIProvider {
   name = 'google';
@@ -25,7 +26,7 @@ export class GoogleProvider implements AIProvider {
         // Add a model acknowledgment
         contents.push({
           role: 'model',
-          parts: [{ text: 'I understand. I will help you create well-structured tickets based on your requirements.' }]
+          parts: [{ text: 'I understand. I will respond in the required JSON format with message and optional tickets array.' }]
         });
       }
 
@@ -36,18 +37,67 @@ export class GoogleProvider implements AIProvider {
 
       const content = response.text || '';
       
-      // Parse the response to extract tickets and other structured data
-      const tickets = await this.parseTickets(content);
+      // Try to parse as structured JSON response
+      const structuredResponse = this.parseStructuredResponse(content);
       
-      return {
-        content,
-        tickets,
-        shouldSplit: tickets.length > 1,
-        clarificationNeeded: content.includes('need more information') || content.includes('clarification'),
-      };
+      if (structuredResponse) {
+        return {
+          content: structuredResponse.message,
+          tickets: structuredResponse.tickets,
+          shouldSplit: structuredResponse.shouldSplit || false,
+          clarificationNeeded: structuredResponse.clarificationNeeded || false,
+        };
+      } else {
+        // Fallback to old parsing if JSON parsing fails
+        console.log('JSON parsing failed, falling back to text parsing');
+        const tickets = await this.parseTickets(content);
+        return {
+          content,
+          tickets,
+          shouldSplit: tickets.length > 1,
+          clarificationNeeded: content.includes('need more information') || content.includes('clarification'),
+        };
+      }
     } catch (error) {
       console.error('Google AI API error:', error);
       throw new Error('Failed to generate AI response');
+    }
+  }
+
+  private parseStructuredResponse(content: string): StructuredAIResponse | null {
+    try {
+      // Extract JSON from the response - it might be wrapped in markdown code blocks
+      let jsonContent = content.trim();
+      
+      // Remove markdown code blocks if present
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      // Try to find JSON object in the text - look for the first { and last }
+      const startIndex = jsonContent.indexOf('{');
+      const lastIndex = jsonContent.lastIndexOf('}');
+      
+      if (startIndex !== -1 && lastIndex !== -1 && lastIndex > startIndex) {
+        jsonContent = jsonContent.substring(startIndex, lastIndex + 1);
+      }
+      
+      const parsed = JSON.parse(jsonContent);
+      
+      // Validate with Zod schema
+      const validatedResponse = StructuredAIResponseSchema.parse(parsed);
+      
+      return {
+        message: validatedResponse.message,
+        tickets: validatedResponse.tickets,
+        shouldSplit: validatedResponse.shouldSplit,
+        clarificationNeeded: validatedResponse.clarificationNeeded,
+      };
+    } catch (error) {
+      console.error('Failed to parse structured response:', error);
+      return null;
     }
   }
 
@@ -57,7 +107,61 @@ export class GoogleProvider implements AIProvider {
     console.log('Input preview:', input.substring(0, 500));
     console.log('Looking for patterns...');
     
+    // First, check if the response is asking for clarification or contains questions
+    const isAskingForClarification = (
+      input.includes('clarif') ||
+      input.includes('Could you please') ||
+      input.includes('let me know') ||
+      input.includes('specify') ||
+      input.includes('need more information') ||
+      input.includes('unclear') ||
+      input.includes('?') ||
+      input.toLowerCase().includes('what kind of') ||
+      input.toLowerCase().includes('which features') ||
+      input.toLowerCase().includes('more details')
+    );
+    
+    console.log('Is asking for clarification:', isAskingForClarification);
+    
+    // If asking for clarification, don't try to extract tickets
+    if (isAskingForClarification) {
+      console.log('Response is asking for clarification - not extracting tickets');
+      return [];
+    }
+    
     const tickets: TicketData[] = [];
+    
+    // Try to parse the new simpler format first
+    // Look for "User Story" followed by "Title:" pattern
+    const simpleUserStoryPattern = /User Story\s*\n\s*Title:\s*([^\n]+)\s*\n\s*Description:\s*([\s\S]*?)(?=\n\s*Acceptance Criteria:|$)/gi;
+    const simpleMatches = [...input.matchAll(simpleUserStoryPattern)];
+    console.log('Simple User Story pattern found:', simpleMatches.length, 'matches');
+    
+    if (simpleMatches.length > 0) {
+      for (const match of simpleMatches) {
+        const title = match[1].trim();
+        const description = match[2].trim();
+        
+        // Find the full content for this user story (from "User Story" to next "User Story" or end)
+        const storyStart = match.index!;
+        const nextStoryMatch = input.indexOf('User Story', storyStart + 1);
+        const storyEnd = nextStoryMatch !== -1 ? nextStoryMatch : input.length;
+        const fullStoryContent = input.substring(storyStart, storyEnd);
+        
+        console.log(`Parsing simple story: "${title}"`);
+        
+        const ticket = this.parseSimpleUserStory(title, description, fullStoryContent);
+        if (ticket) {
+          tickets.push(ticket);
+          console.log(`Successfully parsed simple story: "${ticket.title}"`);
+        }
+      }
+      
+      if (tickets.length > 0) {
+        console.log('=== FINAL RESULT: Generated', tickets.length, 'tickets from simple format ===');
+        return tickets;
+      }
+    }
     
     // Split the input by user story markers - try multiple patterns
     let storyPattern = /-{5,}\s*#\s*User Story/gi;
@@ -142,10 +246,26 @@ export class GoogleProvider implements AIProvider {
     console.log('Processing', actualStories.length, 'actual story sections');
     
     if (actualStories.length === 0) {
-      // Fallback: Look for any structured content that might be a user story
-      console.log('No patterns found, using fallback parsing');
-      const fallbackTicket = this.parseUnstructuredContent(input);
-      if (fallbackTicket) tickets.push(fallbackTicket);
+      // Check if the input looks like it contains actual user story content
+      const hasUserStoryContent = (
+        input.includes('As a ') ||
+        input.includes('User Story') ||
+        input.includes('Acceptance Criteria') ||
+        input.includes('Tasks:') ||
+        (input.includes('Title:') && input.includes('Description:'))
+      );
+      
+      console.log('Has user story content:', hasUserStoryContent);
+      
+      if (hasUserStoryContent) {
+        // Only use fallback parsing if there's actual user story content
+        console.log('Found user story content, using fallback parsing');
+        const fallbackTicket = this.parseUnstructuredContent(input);
+        if (fallbackTicket) tickets.push(fallbackTicket);
+      } else {
+        console.log('No user story content found - not creating tickets');
+      }
+      
       return tickets;
     }
     
@@ -314,5 +434,67 @@ export class GoogleProvider implements AIProvider {
     if (content.includes('low priority') || content.includes('nice to have')) return 'low';
     
     return 'medium';
+  }
+
+  private parseSimpleUserStory(title: string, description: string, fullContent: string): TicketData | null {
+    try {
+      console.log(`Parsing simple user story: "${title}"`);
+      
+      // Extract acceptance criteria
+      const criteriaMatch = fullContent.match(/Acceptance Criteria:\s*([\s\S]*?)(?=\n\s*Tasks:|$)/i);
+      const acceptanceCriteria: string[] = [];
+      if (criteriaMatch) {
+        const criteriaText = criteriaMatch[1];
+        // Look for numbered items
+        const criteriaLines = criteriaText.match(/\d+\.\s*([^\n]+)/g);
+        if (criteriaLines) {
+          criteriaLines.forEach(line => {
+            const cleaned = line.replace(/^\d+\.\s*/, '').trim();
+            if (cleaned) acceptanceCriteria.push(cleaned);
+          });
+        }
+      }
+      
+      // Extract tasks
+      const tasksMatch = fullContent.match(/Tasks:\s*([\s\S]*?)(?=\n\s*Labels:|$)/i);
+      const tasks: string[] = [];
+      if (tasksMatch) {
+        const tasksText = tasksMatch[1];
+        // Look for bullet points or checkboxes
+        const taskLines = tasksText.match(/[•▪\-*]\s*(?:☐\s*)?([^\n]+)/g);
+        if (taskLines) {
+          taskLines.forEach(line => {
+            const cleaned = line.replace(/^[•▪\-*]\s*(?:☐\s*)?/, '').trim();
+            if (cleaned) tasks.push(cleaned);
+          });
+        }
+      }
+      
+      // Extract labels
+      const labelsMatch = fullContent.match(/Labels:\s*([^\n]+)/i);
+      let labels = ['user-story', 'feature'];
+      if (labelsMatch) {
+        const labelText = labelsMatch[1];
+        labels = labelText.split(',').map(l => l.trim()).filter(l => l);
+        if (!labels.includes('user-story')) {
+          labels.unshift('user-story');
+        }
+      }
+      
+      // Determine priority based on content
+      const priority = this.determinePriority(title, description, fullContent);
+      
+      return {
+        title,
+        description,
+        acceptanceCriteria: acceptanceCriteria.length > 0 ? acceptanceCriteria : ['Story implementation completed', 'Acceptance testing passed'],
+        tasks: tasks.length > 0 ? tasks : ['Implement story requirements', 'Test functionality', 'Code review'],
+        labels,
+        priority
+      };
+    } catch (error) {
+      console.error('Error parsing simple user story:', error);
+      return null;
+    }
   }
 } 

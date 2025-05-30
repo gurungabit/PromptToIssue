@@ -230,10 +230,13 @@ app.post('/api/protected/chat', zValidator('json', chatSchema), async (c) => {
       SYSTEM_PROMPT
     )
     
-    // If tickets were generated, format a comprehensive response
-    let formattedResponse = aiResponse.content
+    // Use the parsed message content from AI response
+    let responseContent = aiResponse.content
+    
+    // If we have tickets, create a structured response, otherwise use the message as-is
+    let formattedResponse = responseContent
     if (aiResponse.tickets && aiResponse.tickets.length > 0) {
-      formattedResponse += `
+      formattedResponse = `${responseContent}
 
 ---
 

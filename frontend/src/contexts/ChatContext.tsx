@@ -67,6 +67,7 @@ interface ChatContextType {
   conversations: Conversation[];
   currentConversation: Conversation | null;
   loading: boolean;
+  conversationsLoading: boolean;
   sendMessage: (message: string, conversationId?: string, aiModel?: string) => Promise<{
     conversationId: string;
     response: string;
@@ -87,9 +88,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
 
   const loadConversations = async () => {
     try {
+      setConversationsLoading(true);
       console.log('Loading conversations...');
       const response = await axios.get('/api/protected/conversations');
       console.log('Conversations loaded:', response.data);
@@ -97,6 +100,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to load conversations:', error);
       // Don't throw here, just log the error
+    } finally {
+      setConversationsLoading(false);
     }
   };
 
@@ -113,8 +118,32 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         aiModel,
       });
 
-      // Reload conversations to get updated data
-      await loadConversations();
+      // Only reload conversations if this was a new conversation (no conversationId provided)
+      // For existing conversations, the conversation list doesn't need to be updated
+      if (!conversationId) {
+        // For new conversations, add optimistically and then reload to get the full data
+        const newConversation: Conversation = {
+          id: response.data.conversationId,
+          title: message.slice(0, 50) + (message.length > 50 ? '...' : ''),
+          aiModel: (aiModel || 'openai') as 'openai' | 'anthropic' | 'google',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        // Add to the beginning of the list (most recent first)
+        setConversations(prev => [newConversation, ...prev]);
+        
+        // Then reload to get accurate data from server (this will be fast since it's just a GET request)
+        await loadConversations();
+      } else {
+        // For existing conversations, just update the updatedAt time locally
+        setConversations(prev => prev.map(conv => 
+          conv.id === response.data.conversationId 
+            ? { ...conv, updatedAt: new Date().toISOString() }
+            : conv
+        ));
+      }
 
       return response.data;
     } catch (error: any) {
@@ -173,6 +202,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     conversations,
     currentConversation,
     loading,
+    conversationsLoading,
     sendMessage,
     loadConversations,
     setCurrentConversation,

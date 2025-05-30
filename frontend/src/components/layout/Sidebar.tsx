@@ -11,7 +11,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { conversations, loading, deleteConversation, deleteAllConversations } = useChat();
+  const { conversations, conversationsLoading, deleteConversation, deleteAllConversations } = useChat();
   const { addToast } = useToast();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -50,15 +50,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const isCurrentConversation = location.pathname === `/chat/${conversationId}`;
     
     try {
-      await deleteConversation(conversationId);
-      addToast('Conversation deleted successfully', 'success');
-      
-      // If we deleted the currently active conversation, redirect to new chat
+      // If we're deleting the current conversation, navigate immediately to prevent 404 errors
       if (isCurrentConversation) {
         navigate('/chat');
       }
+      
+      await deleteConversation(conversationId);
+      addToast('Conversation deleted successfully', 'success');
     } catch (error: any) {
       addToast(error.message || 'Failed to delete conversation', 'error');
+      // If deletion failed and we already navigated, we might want to stay on current page
+      // But for now, let's just show the error
     }
   };
 
@@ -202,7 +204,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 )}
               </div>
               
-              {loading ? (
+              {conversationsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                 </div>

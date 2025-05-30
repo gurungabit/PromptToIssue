@@ -19,6 +19,14 @@ export interface AIResponse {
   clarificationNeeded?: boolean;
 }
 
+// Structured AI Response Schema for JSON responses
+export interface StructuredAIResponse {
+  message: string;
+  tickets?: TicketData[];
+  shouldSplit?: boolean;
+  clarificationNeeded?: boolean;
+}
+
 export interface AIProvider {
   name: string;
   generateResponse(messages: AIMessage[], systemPrompt?: string): Promise<AIResponse>;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChat, type TicketData } from '../../contexts/ChatContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -23,7 +23,8 @@ function AIResponseMessage({
   cancelEdit, 
   cleanAIResponse, 
   copyToClipboard, 
-  openProjectSelector 
+  openProjectSelector,
+  addToast
 }: any) {
   const [analysisExpanded, setAnalysisExpanded] = useState(false);
 
@@ -94,17 +95,35 @@ function AIResponseMessage({
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
               Generated User Stories
             </h3>
-            <button
-              onClick={openProjectSelector}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors"
-            >
-              Create Tickets
-            </button>
           </div>
           <div className="space-y-4">
             {aiResponse.tickets.map((ticket: TicketData, index: number) => {
               const isEditing = editingTickets[index];
               const currentTicket = isEditing ? editedTickets[index] : ticket;
+              
+              // Function to copy ticket content
+              const copyTicket = async () => {
+                const ticketText = `${ticket.title}
+
+User Story: ${ticket.description}
+
+Acceptance Criteria:
+${ticket.acceptanceCriteria.map((criteria, i) => `${i + 1}. ${criteria}`).join('\n')}
+
+Tasks:
+${ticket.tasks.map(task => `- ${task}`).join('\n')}
+
+Priority: ${ticket.priority}
+Labels: ${ticket.labels.join(', ')}`;
+                
+                try {
+                  await navigator.clipboard.writeText(ticketText);
+                  addToast(`Ticket "${ticket.title}" copied to clipboard!`, 'success');
+                } catch (err) {
+                  console.error('Failed to copy ticket: ', err);
+                  addToast('Failed to copy ticket to clipboard', 'error');
+                }
+              };
               
               return (
                 <div
@@ -348,18 +367,43 @@ function AIResponseMessage({
                           </button>
                         </>
                       ) : (
-                        <button
-                          onClick={() => startEditing(index, ticket)}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                        >
-                          Edit
-                        </button>
+                        <>
+                          <button
+                            onClick={() => startEditing(index, ticket)}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={copyTicket}
+                            className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-colors flex items-center space-x-1"
+                            title="Copy ticket"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            <span>Copy</span>
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+          
+          {/* Create Tickets Button at the bottom */}
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={openProjectSelector}
+              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Create {aiResponse.tickets.length} Ticket{aiResponse.tickets.length > 1 ? 's' : ''}</span>
+            </button>
           </div>
         </div>
       )}
@@ -368,7 +412,7 @@ function AIResponseMessage({
 }
 
 export default function Chat() {
-  const { conversationId } = useParams();
+  const { conversationId } = useParams<{ conversationId: string }>();
   const { user } = useAuth();
   const { sendMessage, loading, currentConversation, setCurrentConversation, conversations } = useChat();
   const { addToast } = useToast();
@@ -393,6 +437,8 @@ export default function Chat() {
   const [creatingTickets, setCreatingTickets] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -405,7 +451,7 @@ export default function Chat() {
       const token = localStorage.getItem('token');
       if (!token) {
         addToast('Please log in again', 'error');
-        window.location.href = '/login';
+        navigate('/login');
         return;
       }
 
@@ -417,14 +463,14 @@ export default function Chat() {
       if (response.status === 401) {
         addToast('Session expired. Please log in again.', 'error');
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        navigate('/login');
         return;
       }
       
       if (response.status === 404) {
         addToast('Conversation not found', 'error');
         // Redirect to new chat
-        window.location.href = '/chat';
+        navigate('/chat');
         return;
       }
       
@@ -466,10 +512,10 @@ export default function Chat() {
       if (error.response?.status === 401) {
         addToast('Session expired. Please log in again.', 'error');
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        navigate('/login');
       } else if (error.response?.status === 404) {
         addToast('Conversation not found', 'error');
-        window.location.href = '/chat';
+        navigate('/chat');
       } else {
         addToast(`Failed to load conversation: ${error.message}`, 'error');
       }
@@ -481,11 +527,14 @@ export default function Chat() {
   // Effect to handle conversation loading
   useEffect(() => {
     if (conversationId) {
-      // Only load from database if we don't have any messages locally
-      // This prevents overwriting messages when we just created a new conversation
-      if (messages.length === 0) {
-        loadConversation(conversationId);
-      }
+      // Always load the conversation when conversationId changes
+      // Clear previous state first
+      setMessages([]);
+      setAiResponse(null);
+      setCurrentConversation(null);
+      
+      // Load the new conversation
+      loadConversation(conversationId);
     } else {
       // Clear state for new conversation
       setMessages([]);
@@ -494,6 +543,21 @@ export default function Chat() {
     }
   }, [conversationId]);
 
+  // Effect to check if current conversation was deleted
+  useEffect(() => {
+    if (conversationId && conversations.length > 0) {
+      // Check if the current conversation still exists in the conversations list
+      const conversationExists = conversations.some(conv => conv.id === conversationId);
+      
+      if (!conversationExists) {
+        // Current conversation was deleted, redirect to new chat
+        console.log('Current conversation was deleted, redirecting to new chat');
+        addToast('Conversation was deleted', 'info');
+        navigate('/chat');
+      }
+    }
+  }, [conversationId, conversations, addToast]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -501,9 +565,10 @@ export default function Chat() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
+      addToast('Copied to clipboard!', 'success');
     } catch (err) {
       console.error('Failed to copy text: ', err);
+      addToast('Failed to copy to clipboard', 'error');
     }
   };
 
@@ -578,14 +643,16 @@ export default function Chat() {
     }
     
     setInput('');
-
+    // Reset textarea height after clearing input
+    setTimeout(() => adjustTextareaHeight(), 0);
+    
     try {
       const response = await sendMessage(message, conversationId, 'google');
       
       // If we now have a conversationId (new conversation), just update the URL
       if (response.conversationId && response.conversationId !== conversationId) {
         // New conversation created, update URL but don't reload yet
-        window.history.replaceState({}, '', `/chat/${response.conversationId}`);
+        navigate(`/chat/${response.conversationId}`);
         
         // Add the AI response to local state for new conversation
         const aiMessage = {
@@ -625,8 +692,34 @@ export default function Chat() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSend(input);
+    if (input.trim()) {
+      handleSend(input.trim());
+    }
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim()) {
+        handleSend(input.trim());
+      }
+    }
+  };
+
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = 'auto';
+      // Set height based on scrollHeight, with min and max constraints
+      const newHeight = Math.min(Math.max(textarea.scrollHeight, 48), 200); // Min 48px, Max 200px
+      textarea.style.height = `${newHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input]);
 
   const conversationStarters = [
     'Create a user authentication system',
@@ -845,6 +938,7 @@ You can click on any ticket title above to view it on your platform. All tickets
                               cleanAIResponse={cleanAIResponse}
                               copyToClipboard={copyToClipboard}
                               openProjectSelector={openProjectSelector}
+                              addToast={addToast}
                             />
                           ) : (
                             <ReactMarkdown 
@@ -897,21 +991,6 @@ You can click on any ticket title above to view it on your platform. All tickets
       {/* Input Area - Fixed at bottom */}
       <div className="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="max-w-4xl mx-auto px-8 lg:px-16">
-          {/* Create Tickets Button */}
-          {aiResponse?.tickets && aiResponse.tickets.length > 0 && (
-            <div className="mb-4 flex justify-center">
-              <button
-                onClick={openProjectSelector}
-                className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Create {aiResponse.tickets.length} Ticket{aiResponse.tickets.length > 1 ? 's' : ''}</span>
-              </button>
-            </div>
-          )}
-          
           <form onSubmit={handleSubmit} className="relative">
             <div className="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
               {/* Avatar */}
@@ -924,44 +1003,33 @@ You can click on any ticket title above to view it on your platform. All tickets
               </div>
 
               {/* Input */}
-              <div className="flex-1">
-                <input
-                  type="text"
+              <div className="flex-1 min-h-[48px] flex items-center">
+                <textarea
+                  ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Message AI Assistant"
+                  onKeyDown={handleKeyDown}
+                  placeholder="Message AI Assistant (Shift+Enter for new line)"
                   disabled={loading}
-                  className="w-full py-3 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 focus:outline-none"
+                  rows={1}
+                  className="w-full resize-none bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 focus:outline-none py-3 leading-6"
+                  style={{ 
+                    minHeight: '48px',
+                    maxHeight: '200px',
+                    overflowY: 'auto'
+                  }}
                 />
               </div>
 
               {/* Right icons */}
               <div className="flex items-center pr-3 space-x-2">
-                {/* Add/Attach button */}
-                <button
-                  type="button"
-                  className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-
-                {/* Microphone button */}
-                <button
-                  type="button"
-                  className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                </button>
-
+                
                 {/* Send button */}
                 <button
                   type="submit"
                   disabled={!input.trim() || loading}
-                  className="p-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 disabled:opacity-50"
+                  className="p-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 disabled:opacity-50 flex-shrink-0"
+                  title={input.trim() ? "Send message (Enter)" : "Type a message to send"}
                 >
                   {loading ? (
                     <LoadingSpinner size="sm" className="text-white" />

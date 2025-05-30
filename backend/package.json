@@ -28,7 +28,7 @@
     "jsonwebtoken": "^9.0.2",
     "openai": "^4.103.0",
     "sqlite3": "^5.1.7",
-    "zod": "^3.25.33"
+    "zod": "^3.25.39"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
