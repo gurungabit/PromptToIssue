@@ -25,9 +25,15 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
+      // Clear token and redirect to login only if not already on login/register pages
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('user');
+      
+      // Check if we're already on login/register pages to avoid infinite redirects
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/login') && !currentPath.includes('/register')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -154,7 +160,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    loadConversations();
+    // Only load conversations if there's a valid token (user is authenticated)
+    const token = localStorage.getItem('token');
+    if (token) {
+      loadConversations();
+    }
   }, []);
 
   const value: ChatContextType = {
