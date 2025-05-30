@@ -38,6 +38,7 @@ export default function Chat() {
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('');
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingMilestones, setLoadingMilestones] = useState(false);
   const [creatingTickets, setCreatingTickets] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -371,6 +372,7 @@ export default function Chat() {
   };
 
   const loadMilestones = async (platformId: string, projectId: string) => {
+    setLoadingMilestones(true);
     try {
       const response = await axios.get(`/api/protected/platforms/${platformId}/projects/${projectId}/milestones`);
       const milestonesData = response.data;
@@ -381,6 +383,7 @@ export default function Chat() {
       console.error('Failed to load milestones:', error);
       addToast('Failed to load milestones', 'error');
     }
+    setLoadingMilestones(false);
   };
 
   const createTicketsOnPlatform = async () => {
@@ -739,7 +742,7 @@ You can click on any ticket title above to view it on your platform. All tickets
                 )}
 
                 {/* Milestone Selection */}
-                {selectedProject && milestones.length > 0 && (
+                {selectedProject && (
                   <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -754,20 +757,38 @@ You can click on any ticket title above to view it on your platform. All tickets
                         Optional
                       </span>
                     </div>
-                    <CustomSelect
-                      options={milestones.map((milestone) => ({
-                        value: milestone.id,
-                        label: milestone.title,
-                        description: milestone.description,
-                        type: milestone.type,
-                        groupName: milestone.groupName,
-                      }))}
-                      value={selectedMilestone}
-                      onChange={setSelectedMilestone}
-                      placeholder="Select a milestone..."
-                      showGroups={true}
-                      className="w-full"
-                    />
+                    {loadingMilestones ? (
+                      <div className="flex items-center justify-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                        <LoadingSpinner size="sm" />
+                        <span className="ml-3 text-gray-600 dark:text-gray-400">Loading milestones...</span>
+                      </div>
+                    ) : milestones.length > 0 ? (
+                      <CustomSelect
+                        options={milestones.map((milestone) => ({
+                          value: milestone.id,
+                          label: milestone.title,
+                          description: milestone.description,
+                          type: milestone.type,
+                          groupName: milestone.groupName,
+                        }))}
+                        value={selectedMilestone}
+                        onChange={setSelectedMilestone}
+                        placeholder="Select a milestone..."
+                        showGroups={true}
+                        className="w-full"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center py-8 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                        <div className="text-center">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">
+                            No milestones found for this project
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

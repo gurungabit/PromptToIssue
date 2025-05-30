@@ -62,8 +62,29 @@ export class GitLabClient implements PlatformClient {
 
   async getProjects(): Promise<{ id: string; name: string; url: string }[]> {
     try {
-      const projects = await this.makeRequest('/projects?membership=true&simple=true');
-      return projects.map((project: any) => ({
+      const allProjects: any[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const projects = await this.makeRequest(`/projects?membership=true&simple=true&per_page=100&page=${page}`);
+        
+        if (projects.length === 0) {
+          hasMore = false;
+          break;
+        }
+        
+        allProjects.push(...projects);
+        
+        // Check if we need to fetch more pages
+        if (projects.length < 100) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+
+      return allProjects.map((project: any) => ({
         id: project.id.toString(),
         name: project.name_with_namespace,
         url: project.web_url,
@@ -81,7 +102,7 @@ export class GitLabClient implements PlatformClient {
       // Get project details to find group information
       const project = await this.makeRequest(`/projects/${projectId}`);
       
-      // 1. Get project milestones
+      // 1. Get project milestones for the specific project
       try {
         const projectMilestones = await this.makeRequest(`/projects/${projectId}/milestones`);
         milestones.push(...projectMilestones.map((milestone: any) => ({
@@ -89,46 +110,58 @@ export class GitLabClient implements PlatformClient {
           title: milestone.title,
           description: milestone.description || '',
           type: 'project',
-          groupName: project.name,
+          groupName: project.name_with_namespace,
         })));
       } catch (error) {
         console.error('Failed to fetch project milestones:', error);
       }
       
-      // 2. Get group milestones if project belongs to a group
+      // 2. If project belongs to a group, get all group-related milestones
       if (project.namespace && project.namespace.kind === 'group') {
         const groupId = project.namespace.id;
         
-        try {
-          const groupMilestones = await this.makeRequest(`/groups/${groupId}/milestones`);
-          milestones.push(...groupMilestones.map((milestone: any) => ({
-            id: `group_${milestone.id}`,
-            title: milestone.title,
-            description: milestone.description || '',
-            type: 'group',
-            groupName: project.namespace.full_path,
-          })));
-        } catch (error) {
-          console.error('Failed to fetch group milestones:', error);
-        }
+        // Find the root group and get comprehensive milestones from the entire hierarchy
+        const rootGroup = await this.findRootGroup(groupId);
+        await this.getAllGroupMilestones(rootGroup.id, milestones);
         
-        // 3. Get parent group milestones (for nested groups)
-        try {
-          const group = await this.makeRequest(`/groups/${groupId}`);
-          if (group.parent_id) {
-            await this.getParentGroupMilestones(group.parent_id, milestones);
-          }
-        } catch (error) {
-          console.error('Failed to fetch parent group info:', error);
+        // Also get milestones from the immediate group if it's different from root
+        if (rootGroup.id !== groupId) {
+          await this.getAllGroupMilestones(groupId, milestones);
         }
       }
       
+      // Remove duplicates based on milestone ID and project/group combination
+      const uniqueMilestones = milestones.filter((milestone, index, self) => {
+        return index === self.findIndex(m => {
+          // For project milestones, compare by milestone ID and project/group name
+          if (m.type === 'project' && milestone.type === 'project') {
+            // Extract milestone ID from both formats (project_123 or project_123_456)
+            const mId = this.extractOriginalMilestoneId(m.id);
+            const milestoneId = this.extractOriginalMilestoneId(milestone.id);
+            
+            // Compare milestone ID and group name to ensure they're the same milestone
+            return mId === milestoneId && m.groupName === milestone.groupName;
+          }
+          
+          // For group/subgroup milestones, compare by milestone ID and group path
+          if ((m.type === 'group' || m.type === 'subgroup') && 
+              (milestone.type === 'group' || milestone.type === 'subgroup')) {
+            const mId = this.extractOriginalMilestoneId(m.id);
+            const milestoneId = this.extractOriginalMilestoneId(milestone.id);
+            return mId === milestoneId && m.groupName === milestone.groupName;
+          }
+          
+          // Default comparison by full ID for other types
+          return m.id === milestone.id;
+        });
+      });
+      
       // Sort milestones by type and title
-      return milestones.sort((a, b) => {
-        // First sort by type (project, group, parent groups)
-        const typeOrder = { project: 0, group: 1, parent_group: 2 };
-        const aOrder = typeOrder[a.type as keyof typeof typeOrder] || 3;
-        const bOrder = typeOrder[b.type as keyof typeof typeOrder] || 3;
+      return uniqueMilestones.sort((a, b) => {
+        // First sort by type (project, group, subgroup, parent groups)
+        const typeOrder = { project: 0, group: 1, subgroup: 2, parent_group: 3 };
+        const aOrder = typeOrder[a.type as keyof typeof typeOrder] || 4;
+        const bOrder = typeOrder[b.type as keyof typeof typeOrder] || 4;
         
         if (aOrder !== bOrder) {
           return aOrder - bOrder;
@@ -142,31 +175,109 @@ export class GitLabClient implements PlatformClient {
       return [];
     }
   }
-  
-  private async getParentGroupMilestones(parentGroupId: string, milestones: any[]): Promise<void> {
+
+  private async findRootGroup(groupId: string): Promise<any> {
     try {
-      const parentGroup = await this.makeRequest(`/groups/${parentGroupId}`);
+      const group = await this.makeRequest(`/groups/${groupId}`);
       
-      // Get milestones for this parent group
+      // If this group has a parent, recursively find the root
+      if (group.parent_id) {
+        return await this.findRootGroup(group.parent_id);
+      }
+      
+      // This is the root group
+      return group;
+    } catch (error) {
+      console.error(`Failed to find root group for ${groupId}:`, error);
+      // Fallback to the current group
+      return await this.makeRequest(`/groups/${groupId}`);
+    }
+  }
+
+  private async getAllGroupMilestones(groupId: string, milestones: any[]): Promise<void> {
+    try {
+      // Get the main group details
+      const group = await this.makeRequest(`/groups/${groupId}`);
+      
+      // 1. Get direct group milestones
       try {
-        const parentMilestones = await this.makeRequest(`/groups/${parentGroupId}/milestones`);
-        milestones.push(...parentMilestones.map((milestone: any) => ({
-          id: `parent_group_${milestone.id}`,
+        const groupMilestones = await this.makeRequest(`/groups/${groupId}/milestones`);
+        milestones.push(...groupMilestones.map((milestone: any) => ({
+          id: `group_${milestone.id}`,
           title: milestone.title,
           description: milestone.description || '',
-          type: 'parent_group',
-          groupName: parentGroup.full_path,
+          type: 'group',
+          groupName: group.full_path,
         })));
       } catch (error) {
-        console.error(`Failed to fetch milestones for parent group ${parentGroupId}:`, error);
+        console.error(`Failed to fetch milestones for group ${groupId}:`, error);
       }
       
-      // Recursively get milestones from even higher parent groups
-      if (parentGroup.parent_id) {
-        await this.getParentGroupMilestones(parentGroup.parent_id, milestones);
+      // 2. Get all subgroups and their milestones
+      try {
+        const subgroups = await this.makeRequest(`/groups/${groupId}/subgroups`);
+        for (const subgroup of subgroups) {
+          try {
+            const subgroupMilestones = await this.makeRequest(`/groups/${subgroup.id}/milestones`);
+            milestones.push(...subgroupMilestones.map((milestone: any) => ({
+              id: `subgroup_${milestone.id}`,
+              title: milestone.title,
+              description: milestone.description || '',
+              type: 'subgroup',
+              groupName: subgroup.full_path,
+            })));
+            
+            // Recursively get milestones from nested subgroups
+            await this.getAllGroupMilestones(subgroup.id, milestones);
+          } catch (error) {
+            console.error(`Failed to fetch milestones for subgroup ${subgroup.id}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to fetch subgroups for group ${groupId}:`, error);
+      }
+      
+      // 3. Get all projects in this group and their milestones
+      try {
+        // Get projects with pagination support
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const projects = await this.makeRequest(`/groups/${groupId}/projects?per_page=100&page=${page}&include_subgroups=true`);
+          
+          if (projects.length === 0) {
+            hasMore = false;
+            break;
+          }
+          
+          for (const project of projects) {
+            try {
+              const projectMilestones = await this.makeRequest(`/projects/${project.id}/milestones`);
+              milestones.push(...projectMilestones.map((milestone: any) => ({
+                id: `project_${milestone.id}_${project.id}`, // Include project ID to avoid conflicts
+                title: milestone.title,
+                description: milestone.description || '',
+                type: 'project',
+                groupName: project.name_with_namespace,
+              })));
+            } catch (error) {
+              console.error(`Failed to fetch milestones for project ${project.id}:`, error);
+            }
+          }
+          
+          // Check if we need to fetch more pages
+          if (projects.length < 100) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to fetch projects for group ${groupId}:`, error);
       }
     } catch (error) {
-      console.error(`Failed to fetch parent group ${parentGroupId}:`, error);
+      console.error(`Failed to fetch group ${groupId}:`, error);
     }
   }
 
@@ -220,9 +331,57 @@ export class GitLabClient implements PlatformClient {
     };
   }
 
+  private extractOriginalMilestoneId(milestoneId: string): string {
+    // Extract original milestone ID from prefixed ID formats:
+    // "project_123" -> "project_123"
+    // "project_123_456" -> "project_123"  (remove project ID suffix)
+    // "group_123" -> "group_123"
+    // "subgroup_123" -> "subgroup_123"
+    // "parent_group_123" -> "parent_group_123"
+    
+    // Handle project milestones with project ID suffix (project_123_456 -> project_123)
+    let match = milestoneId.match(/^project_(\d+)_\d+$/);
+    if (match) {
+      return `project_${match[1]}`;
+    }
+    
+    // Handle project milestones without suffix (project_123 -> project_123)
+    match = milestoneId.match(/^project_(\d+)$/);
+    if (match) {
+      return `project_${match[1]}`;
+    }
+    
+    // Handle all other prefixed formats (group, subgroup, parent_group)
+    match = milestoneId.match(/^(group_|subgroup_|parent_group_)(.*)$/);
+    if (match) {
+      return match[1] + match[2];
+    }
+    
+    // Fallback for plain numeric IDs
+    return milestoneId;
+  }
+
   private extractMilestoneId(milestoneId: string): number | undefined {
-    // Extract actual milestone ID from prefixed ID (e.g., "project_123" -> 123)
-    const match = milestoneId.match(/^(project_|group_|parent_group_)(\d+)$/);
-    return match ? parseInt(match[2]) : parseInt(milestoneId);
+    // Extract actual milestone ID from prefixed ID formats:
+    // "project_123" -> 123
+    // "project_123_456" -> 123 (milestone 123 from project 456)
+    // "group_123" -> 123
+    // "subgroup_123" -> 123
+    // "parent_group_123" -> 123
+    
+    // Handle project milestones with project ID suffix
+    let match = milestoneId.match(/^project_(\d+)_\d+$/);
+    if (match) {
+      return parseInt(match[1]);
+    }
+    
+    // Handle all other prefixed formats
+    match = milestoneId.match(/^(project_|group_|subgroup_|parent_group_)(\d+)$/);
+    if (match) {
+      return parseInt(match[2]);
+    }
+    
+    // Fallback for plain numeric IDs
+    return parseInt(milestoneId);
   }
 } 
