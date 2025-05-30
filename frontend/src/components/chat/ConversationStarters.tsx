@@ -1,26 +1,42 @@
 import React from 'react';
+import type { ChatMode } from '../../hooks/useChat';
 
 interface ConversationStartersProps {
   username?: string;
   handleSend: (message: string) => void;
   loading: boolean;
+  mode: ChatMode;
 }
 
 const ConversationStarters: React.FC<ConversationStartersProps> = ({ 
   username, 
   handleSend, 
-  loading 
+  loading,
+  mode
 }) => {
-  const conversationStarters = [
+  const ticketStarters = [
     'Create a user authentication system',
-    'How does JWT authentication work?',
     'Build a REST API for a blog',
-    'What are the best practices for API design?',
     'Implement a payment gateway',
-    'Explain how OAuth works',
     'Design a dashboard with analytics',
-    'Help me understand microservices architecture',
+    'Add real-time chat functionality',
+    'Create a file upload system',
+    'Build a notification system',
+    'Implement search functionality',
   ];
+
+  const assistantStarters = [
+    'How does JWT authentication work?',
+    'What are the best practices for API design?',
+    'Explain how OAuth works',
+    'Help me understand microservices architecture',
+    'What is the difference between SQL and NoSQL?',
+    'How do I optimize database queries?',
+    'Explain React hooks and their usage',
+    'What are design patterns in software development?',
+  ];
+
+  const conversationStarters = mode === 'ticket' ? ticketStarters : assistantStarters;
 
   return (
     <div className="flex flex-col items-center justify-center h-full py-8">
@@ -28,20 +44,28 @@ const ConversationStarters: React.FC<ConversationStartersProps> = ({
       <div className="text-center space-y-8 w-full max-w-4xl">
         <div className="space-y-4">
           <h1 className="text-3xl font-medium text-gray-900 dark:text-white">
-            AI Ticket Generator
+            {mode === 'ticket' ? 'AI Ticket Generator' : 'AI Assistant'}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Describe your requirements and I'll create structured tickets for you
+            {mode === 'ticket' 
+              ? 'Describe your requirements and I\'ll create structured tickets for you'
+              : 'Ask me anything! I\'m here to help with your questions and provide assistance'
+            }
           </p>
         </div>
         
         <div className="space-y-6">
           <h2 className="text-2xl font-medium text-gray-900 dark:text-white">
-            Hi {username}, what should we build into tickets today?
+            Hi {username}, {mode === 'ticket' 
+              ? 'what should we build into tickets today?' 
+              : 'how can I help you today?'
+            }
           </h2>
           <p className="text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-            I can help you create well-structured tickets from your ideas. Just describe what you need 
-            and I'll break it down into actionable tasks.
+            {mode === 'ticket'
+              ? 'I can help you create well-structured tickets from your ideas. Just describe what you need and I\'ll break it down into actionable tasks.'
+              : 'I\'m here to answer your questions, explain concepts, help with coding problems, or provide guidance on any topic you\'re curious about.'
+            }
           </p>
         </div>
 

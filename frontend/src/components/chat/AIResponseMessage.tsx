@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { TicketData } from '../../hooks/useChat';
+import type { TicketData, ChatMode } from '../../hooks/useChat';
 import type { TicketFieldValue } from '../../types';
 import CodeBlock from './CodeBlock';
 
@@ -22,6 +22,7 @@ interface AIResponseMessageProps {
   copyToClipboard: (text: string) => Promise<void>;
   openProjectSelector: () => void;
   addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+  mode: ChatMode;
 }
 
 const AIResponseMessage: React.FC<AIResponseMessageProps> = ({ 
@@ -35,7 +36,8 @@ const AIResponseMessage: React.FC<AIResponseMessageProps> = ({
   cleanAIResponse, 
   copyToClipboard, 
   openProjectSelector,
-  addToast
+  addToast,
+  mode
 }) => {
   const [analysisExpanded, setAnalysisExpanded] = useState(false);
 
@@ -110,7 +112,7 @@ const AIResponseMessage: React.FC<AIResponseMessageProps> = ({
       </div>
 
       {/* Editable User Stories */}
-      {aiResponse?.tickets && aiResponse.tickets.length > 0 && (
+      {mode === 'ticket' && aiResponse?.tickets && aiResponse.tickets.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">

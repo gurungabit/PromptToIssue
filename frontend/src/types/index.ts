@@ -4,6 +4,7 @@ export interface Message {
   content: string;
   createdAt: string;
   metadata?: string | object;
+  isLoading?: boolean;
 }
 
 export interface Platform {

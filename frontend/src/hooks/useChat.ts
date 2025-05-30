@@ -1,5 +1,7 @@
 import { useContext, createContext } from 'react';
 
+export type ChatMode = 'ticket' | 'assistant';
+
 export interface TicketData {
   title: string;
   description: string;
@@ -18,6 +20,7 @@ export interface Message {
     tickets?: TicketData[];
     shouldSplit?: boolean;
     clarificationNeeded?: boolean;
+    mode?: ChatMode;
   };
 }
 
@@ -29,6 +32,7 @@ export interface Conversation {
   createdAt: string;
   updatedAt: string;
   messages?: Message[];
+  mode?: ChatMode;
 }
 
 export interface ChatContextType {
@@ -36,7 +40,9 @@ export interface ChatContextType {
   currentConversation: Conversation | null;
   loading: boolean;
   conversationsLoading: boolean;
-  sendMessage: (message: string, conversationId?: string, aiModel?: string) => Promise<{
+  mode: ChatMode;
+  setMode: (mode: ChatMode) => void;
+  sendMessage: (message: string, conversationId?: string, aiModel?: string, mode?: ChatMode) => Promise<{
     conversationId: string;
     response: string;
     tickets?: TicketData[];

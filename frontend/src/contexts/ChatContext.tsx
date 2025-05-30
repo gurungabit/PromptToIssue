@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
-import { ChatContext, type TicketData, type Conversation, type ChatContextType } from '../hooks/useChat';
+import { ChatContext, type TicketData, type Conversation, type ChatContextType, type ChatMode } from '../hooks/useChat';
 
 // Configure axios defaults - use relative URLs since Vite proxy handles routing
 // axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -38,6 +38,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(false);
   const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [mode, setMode] = useState<ChatMode>('ticket'); // Default to ticket mode
 
   const loadConversations = async () => {
     try {
@@ -57,14 +58,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const sendMessage = async (
     message: string,
     conversationId?: string,
-    aiModel?: string
+    aiModel?: string,
+    messageMode?: ChatMode
   ) => {
     setLoading(true);
+    const currentMode = messageMode || mode;
+    
     try {
       const response = await axios.post('/api/protected/chat', {
         message,
         conversationId,
         aiModel,
+        mode: currentMode,
       });
 
       // Only reload conversations if this was a new conversation (no conversationId provided)
@@ -78,6 +83,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           status: 'active',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          mode: currentMode,
         };
         
         // Add to the beginning of the list (most recent first)
@@ -156,6 +162,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     currentConversation,
     loading,
     conversationsLoading,
+    mode,
+    setMode,
     sendMessage,
     loadConversations,
     setCurrentConversation,

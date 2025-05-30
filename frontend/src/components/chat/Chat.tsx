@@ -12,12 +12,13 @@ import axios from 'axios';
 import CodeBlock from './CodeBlock';
 import AIResponseMessage from './AIResponseMessage';
 import ConversationStarters from './ConversationStarters';
+import ModeToggle from './ModeToggle';
 import type { Message, Platform, Project, Milestone, PlatformTicket, ApiError, TicketCreationResponse, TicketFieldValue } from '../../types';
 
 export default function Chat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const { user } = useAuth();
-  const { sendMessage, loading, setCurrentConversation, conversations } = useChat();
+  const { sendMessage, loading, setCurrentConversation, conversations, mode } = useChat();
   const { addToast } = useToast();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -235,49 +236,49 @@ export default function Chat() {
   const handleSend = async (message: string) => {
     if (!message.trim() || loading) return;
 
-    // For new conversations, add the user message to local state first
-    if (!conversationId) {
-      const userMessage = {
-        id: Date.now().toString(),
-        role: 'user' as const,
-        content: message,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, userMessage]);
-    }
+    // Always add the user message to local state immediately
+    const userMessage = {
+      id: Date.now().toString(),
+      role: 'user' as const,
+      content: message,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Add a loading message placeholder
+    const loadingMessage = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant' as const,
+      content: '...',
+      createdAt: new Date().toISOString(),
+      isLoading: true,
+    };
+    setMessages(prev => [...prev, loadingMessage]);
     
     setInput('');
     // Reset textarea height after clearing input
     setTimeout(() => adjustTextareaHeight(), 0);
     
     try {
-      const response = await sendMessage(message, conversationId, 'google');
+      const response = await sendMessage(message, conversationId, 'google', mode);
       
-      // If we now have a conversationId (new conversation), just update the URL
+      // Replace the loading message with the actual AI response
+      const aiMessage = {
+        id: (Date.now() + 2).toString(),
+        role: 'assistant' as const,
+        content: response.response,
+        createdAt: new Date().toISOString(),
+      };
+      
+      setMessages(prev => {
+        // Remove the loading message and add the real response
+        const withoutLoading = prev.filter(msg => !msg.isLoading);
+        return [...withoutLoading, aiMessage];
+      });
+      
+      // If we now have a conversationId (new conversation), update the URL
       if (response.conversationId && response.conversationId !== conversationId) {
-        // New conversation created, update URL but don't reload yet
         navigate(`/chat/${response.conversationId}`);
-        
-        // Add the AI response to local state for new conversation
-        const aiMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant' as const,
-          content: response.response,
-          createdAt: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, aiMessage]);
-      } else if (conversationId) {
-        // Existing conversation, reload to get updated messages
-        await loadConversation(conversationId);
-      } else {
-        // For new conversation without backend conversationId yet, handle as before
-        const aiMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant' as const,
-          content: response.response,
-          createdAt: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, aiMessage]);
       }
       
       // Set aiResponse for ticket creation functionality
@@ -286,12 +287,17 @@ export default function Chat() {
       console.error('Error sending message:', error);
       const apiError = error as ApiError;
       const errorMessage = {
-        id: (Date.now() + 1).toString(),
+        id: (Date.now() + 2).toString(),
         role: 'assistant' as const,
         content: `Sorry, I encountered an error: ${apiError.message || 'Unknown error'}. Please make sure you have configured at least one AI API key in the backend .env file.`,
         createdAt: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      
+      // Replace the loading message with the error message
+      setMessages(prev => {
+        const withoutLoading = prev.filter(msg => !msg.isLoading);
+        return [...withoutLoading, errorMessage];
+      });
     }
   };
 
@@ -459,6 +465,7 @@ You can click on any ticket title above to view it on your platform. All tickets
               username={user?.username}
               handleSend={handleSend}
               loading={loading}
+              mode={mode}
             />
           ) : (
             <div className="py-8 min-h-full">
@@ -480,6 +487,11 @@ You can click on any ticket title above to view it on your platform. All tickets
                         <div className="leading-relaxed">
                           {message.role === 'user' ? (
                             <div className="whitespace-pre-wrap">{message.content}</div>
+                          ) : message.isLoading ? (
+                            <div className="flex items-center gap-2">
+                              <LoadingSpinner size="sm" />
+                              <span className="text-gray-500 dark:text-gray-400">AI is thinking...</span>
+                            </div>
                           ) : (
                             // Check if this is an AI message with tickets
                             aiResponse?.tickets && aiResponse.tickets.length > 0 && 
@@ -497,6 +509,7 @@ You can click on any ticket title above to view it on your platform. All tickets
                                 copyToClipboard={copyToClipboard}
                                 openProjectSelector={openProjectSelector}
                                 addToast={addToast}
+                                mode={mode}
                               />
                             ) : (
                               <ReactMarkdown 
@@ -555,18 +568,8 @@ You can click on any ticket title above to view it on your platform. All tickets
                   </div>
                 ))}
 
-                {/* Loading indicator */}
-                {loading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 border border-gray-200 dark:border-gray-700">
-                      <LoadingSpinner size="sm" />
-                    </div>
-                  </div>
-                )}
-
+                {/* Messages end */}
                 <div ref={messagesEndRef} />
-                {/* Add some bottom padding to ensure input is visible */}
-                <div className="h-24"></div>
               </div>
             </div>
           )}
@@ -576,6 +579,11 @@ You can click on any ticket title above to view it on your platform. All tickets
       {/* Input Area - Fixed at bottom */}
       <div className="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="max-w-4xl mx-auto px-8 lg:px-16">
+          {/* Mode Toggle - positioned in top right */}
+          <div className="flex justify-end mb-3">
+            <ModeToggle />
+          </div>
+          
           <form onSubmit={handleSubmit} className="relative">
             <div className="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
               {/* Avatar */}
@@ -594,7 +602,10 @@ You can click on any ticket title above to view it on your platform. All tickets
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Message AI Assistant (Shift+Enter for new line)"
+                  placeholder={mode === 'ticket' 
+                    ? "Describe your requirements to generate tickets (Shift+Enter for new line)"
+                    : "Ask me anything! I'm here to help (Shift+Enter for new line)"
+                  }
                   disabled={loading}
                   rows={1}
                   className="w-full resize-none bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 focus:outline-none py-3 leading-6"

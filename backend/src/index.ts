@@ -10,7 +10,7 @@ import dotenv from 'dotenv'
 import { eq, and } from 'drizzle-orm'
 
 import { db, users, conversations, messages, tickets, platforms, userSettings, apiKeys } from './db/index.js'
-import { AIService, SYSTEM_PROMPT } from './services/ai/index.js'
+import { AIService, TICKET_SYSTEM_PROMPT, ASSISTANT_SYSTEM_PROMPT } from './services/ai/index.js'
 import { GitLabClient } from './services/platforms/gitlab.js'
 import { GitHubClient } from './services/platforms/github.js'
 import type { AIProviderType } from './services/ai/types.js'
@@ -54,6 +54,7 @@ const chatSchema = z.object({
   message: z.string(),
   conversationId: z.string().optional(),
   aiModel: z.enum(['openai', 'anthropic', 'google']).optional(),
+  mode: z.enum(['ticket', 'assistant']).optional().default('ticket'),
 })
 
 const createTicketsSchema = z.object({
@@ -176,7 +177,7 @@ app.use('/api/protected/*', authMiddleware)
 app.post('/api/protected/chat', zValidator('json', chatSchema), async (c) => {
   try {
     const payload = c.get('jwtPayload')
-    const { message, conversationId, aiModel } = c.req.valid('json')
+    const { message, conversationId, aiModel, mode } = c.req.valid('json')
     
     let conversation
     let chatHistory: any[] = []
@@ -222,20 +223,23 @@ app.post('/api/protected/chat', zValidator('json', chatSchema), async (c) => {
       content: message,
     })
     
+    // Choose system prompt based on mode
+    const systemPrompt = mode === 'assistant' ? ASSISTANT_SYSTEM_PROMPT : TICKET_SYSTEM_PROMPT
+    
     // Get AI response
     const preferredModel = aiModel || conversation.aiModel as AIProviderType
     const aiResponse = await aiService.generateResponseWithFallback(
       preferredModel,
       chatHistory,
-      SYSTEM_PROMPT
+      systemPrompt
     )
     
     // Use the parsed message content from AI response
     let responseContent = aiResponse.content
     
-    // If we have tickets, create a structured response, otherwise use the message as-is
+    // Format response based on mode
     let formattedResponse = responseContent
-    if (aiResponse.tickets && aiResponse.tickets.length > 0) {
+    if (mode === 'ticket' && aiResponse.tickets && aiResponse.tickets.length > 0) {
       formattedResponse = `${responseContent}
 
 ---
@@ -270,18 +274,18 @@ ${ticket.tasks.map(task => `- [ ] ${task}`).join('\n')}
       role: 'assistant',
       content: formattedResponse,
       metadata: JSON.stringify({
-        tickets: aiResponse.tickets,
-        shouldSplit: aiResponse.shouldSplit,
-        clarificationNeeded: aiResponse.clarificationNeeded,
+        tickets: mode === 'ticket' ? aiResponse.tickets : undefined,
+        shouldSplit: mode === 'ticket' ? aiResponse.shouldSplit : undefined,
+        clarificationNeeded: mode === 'ticket' ? aiResponse.clarificationNeeded : undefined,
       }),
     })
 
     return c.json({
       conversationId: conversation.id,
       response: formattedResponse,
-      tickets: aiResponse.tickets,
-      shouldSplit: aiResponse.shouldSplit,
-      clarificationNeeded: aiResponse.clarificationNeeded,
+      tickets: mode === 'ticket' ? aiResponse.tickets : undefined,
+      shouldSplit: mode === 'ticket' ? aiResponse.shouldSplit : undefined,
+      clarificationNeeded: mode === 'ticket' ? aiResponse.clarificationNeeded : undefined,
     })
   } catch (error) {
     console.error('Chat error:', error)
