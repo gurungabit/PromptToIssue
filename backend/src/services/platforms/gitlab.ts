@@ -104,7 +104,7 @@ export class GitLabClient implements PlatformClient {
       
       // 1. Get project milestones for the specific project
       try {
-        const projectMilestones = await this.makeRequest(`/projects/${projectId}/milestones`);
+        const projectMilestones = await this.makeRequest(`/projects/${projectId}/milestones?state=active`);
         milestones.push(...projectMilestones.map((milestone: any) => ({
           id: `project_${milestone.id}`,
           title: milestone.title,
@@ -201,7 +201,7 @@ export class GitLabClient implements PlatformClient {
       
       // 1. Get direct group milestones
       try {
-        const groupMilestones = await this.makeRequest(`/groups/${groupId}/milestones`);
+        const groupMilestones = await this.makeRequest(`/groups/${groupId}/milestones?state=active`);
         milestones.push(...groupMilestones.map((milestone: any) => ({
           id: `group_${milestone.id}`,
           title: milestone.title,
@@ -218,7 +218,7 @@ export class GitLabClient implements PlatformClient {
         const subgroups = await this.makeRequest(`/groups/${groupId}/subgroups`);
         for (const subgroup of subgroups) {
           try {
-            const subgroupMilestones = await this.makeRequest(`/groups/${subgroup.id}/milestones`);
+            const subgroupMilestones = await this.makeRequest(`/groups/${subgroup.id}/milestones?state=active`);
             milestones.push(...subgroupMilestones.map((milestone: any) => ({
               id: `subgroup_${milestone.id}`,
               title: milestone.title,
@@ -253,7 +253,7 @@ export class GitLabClient implements PlatformClient {
           
           for (const project of projects) {
             try {
-              const projectMilestones = await this.makeRequest(`/projects/${project.id}/milestones`);
+              const projectMilestones = await this.makeRequest(`/projects/${project.id}/milestones?state=active`);
               milestones.push(...projectMilestones.map((milestone: any) => ({
                 id: `project_${milestone.id}_${project.id}`, // Include project ID to avoid conflicts
                 title: milestone.title,

@@ -41,6 +41,14 @@ export default function Chat() {
   const [loadingMilestones, setLoadingMilestones] = useState(false);
   const [creatingTickets, setCreatingTickets] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
+  
+  // Cache for projects and milestones
+  const [projectsCache, setProjectsCache] = useState<{[platformId: string]: {data: Project[], timestamp: number}}>({});
+  const [milestonesCache, setMilestonesCache] = useState<{[key: string]: {data: Milestone[], timestamp: number, version: number}}>({});
+  
+  // Cache version - increment this when API changes (like filtering)
+  const MILESTONES_CACHE_VERSION = 2; // Changed to 2 to invalidate old cache with closed milestones
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
@@ -354,16 +362,48 @@ export default function Chat() {
     }
   };
 
-  const loadProjects = async (platformId: string) => {
+  const loadProjects = async (platformId: string, forceRefresh: boolean = false) => {
+    // Check cache first (5 minutes cache duration)
+    const cacheKey = platformId;
+    const cached = projectsCache[cacheKey];
+    const now = Date.now();
+    const cacheExpiryTime = 5 * 60 * 1000; // 5 minutes
+    
+    if (!forceRefresh && cached && (now - cached.timestamp) < cacheExpiryTime) {
+      console.log('Using cached projects for platform:', platformId);
+      setProjects(cached.data);
+      setSelectedProject('');
+      setMilestones([]);
+      setSelectedMilestone('');
+      if (!forceRefresh) {
+        addToast('Projects loaded from cache', 'info');
+      }
+      return;
+    }
+
     setLoadingProjects(true);
     try {
       const response = await axios.get(`/api/protected/platforms/${platformId}/projects`);
       const projectsData = response.data;
-      console.log('Projects loaded:', projectsData);
+      console.log('Projects loaded from API:', projectsData);
+      
+      // Update cache
+      setProjectsCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: projectsData,
+          timestamp: now
+        }
+      }));
+      
       setProjects(projectsData);
       setSelectedProject('');
       setMilestones([]);
       setSelectedMilestone('');
+      
+      if (forceRefresh) {
+        addToast('Projects refreshed successfully', 'success');
+      }
     } catch (error) {
       console.error('Failed to load projects:', error);
       addToast('Failed to load projects', 'error');
@@ -371,14 +411,45 @@ export default function Chat() {
     setLoadingProjects(false);
   };
 
-  const loadMilestones = async (platformId: string, projectId: string) => {
+  const loadMilestones = async (platformId: string, projectId: string, forceRefresh: boolean = false) => {
+    // Check cache first (5 minutes cache duration)
+    const cacheKey = `${platformId}_${projectId}`;
+    const cached = milestonesCache[cacheKey];
+    const now = Date.now();
+    const cacheExpiryTime = 5 * 60 * 1000; // 5 minutes
+    
+    if (!forceRefresh && cached && (now - cached.timestamp) < cacheExpiryTime && cached.version === MILESTONES_CACHE_VERSION) {
+      console.log('Using cached milestones for project:', projectId);
+      setMilestones(cached.data);
+      setSelectedMilestone('');
+      if (!forceRefresh) {
+        addToast('Open milestones loaded from cache', 'info');
+      }
+      return;
+    }
+
     setLoadingMilestones(true);
     try {
       const response = await axios.get(`/api/protected/platforms/${platformId}/projects/${projectId}/milestones`);
       const milestonesData = response.data;
-      console.log('Milestones loaded:', milestonesData);
+      console.log('Milestones loaded from API:', milestonesData);
+      
+      // Update cache
+      setMilestonesCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: milestonesData,
+          timestamp: now,
+          version: MILESTONES_CACHE_VERSION
+        }
+      }));
+      
       setMilestones(milestonesData);
       setSelectedMilestone('');
+      
+      if (forceRefresh) {
+        addToast('Open milestones refreshed successfully', 'success');
+      }
     } catch (error) {
       console.error('Failed to load milestones:', error);
       addToast('Failed to load milestones', 'error');
@@ -705,15 +776,32 @@ You can click on any ticket title above to view it on your platform. All tickets
                 {/* Project Selection */}
                 {selectedPlatform && (
                   <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                        </div>
+                        <label className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Project
+                        </label>
+                        {projectsCache[selectedPlatform] && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                            Cached
+                          </span>
+                        )}
                       </div>
-                      <label className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Project
-                      </label>
+                      <button
+                        onClick={() => selectedPlatform && loadProjects(selectedPlatform, true)}
+                        disabled={loadingProjects}
+                        className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+                        title="Refresh projects"
+                      >
+                        <svg className={`w-4 h-4 ${loadingProjects ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0V9a8 8 0 1115.356 2m-15.356 0H4" />
+                        </svg>
+                      </button>
                     </div>
                     {loadingProjects ? (
                       <div className="flex items-center justify-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -744,18 +832,35 @@ You can click on any ticket title above to view it on your platform. All tickets
                 {/* Milestone Selection */}
                 {selectedProject && (
                   <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                        </svg>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                        </div>
+                        <label className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Milestone
+                        </label>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                          Optional
+                        </span>
+                        {selectedPlatform && selectedProject && milestonesCache[`${selectedPlatform}_${selectedProject}`] && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                            Cached (Open Only)
+                          </span>
+                        )}
                       </div>
-                      <label className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Milestone
-                      </label>
-                      <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
-                        Optional
-                      </span>
+                      <button
+                        onClick={() => selectedPlatform && selectedProject && loadMilestones(selectedPlatform, selectedProject, true)}
+                        disabled={loadingMilestones}
+                        className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+                        title="Refresh milestones"
+                      >
+                        <svg className={`w-4 h-4 ${loadingMilestones ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0V9a8 8 0 1115.356 2m-15.356 0H4" />
+                        </svg>
+                      </button>
                     </div>
                     {loadingMilestones ? (
                       <div className="flex items-center justify-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl">
