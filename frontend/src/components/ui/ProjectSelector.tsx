@@ -67,7 +67,7 @@ export default function ProjectSelector({
     setIsManualInput(true);
     setIsOpen(true);
 
-    // If user is typing something that doesn't match any project, treat as manual input
+    // If user is typing something that matches exactly, auto-select it
     const matchingProject = projects.find(
       p => p.name.toLowerCase() === newValue.toLowerCase() || p.id === newValue
     );
@@ -75,8 +75,27 @@ export default function ProjectSelector({
     if (matchingProject) {
       onChange(matchingProject.id);
       setIsManualInput(false);
-    } else {
-      onChange(newValue);
+    }
+    // Don't call onChange for every keystroke - only when project is selected or on blur
+  };
+
+  const handleBlur = () => {
+    // Only set manual input value when user finishes typing
+    if (inputValue && !projects.find(p => p.id === inputValue || p.name === inputValue)) {
+      onChange(inputValue);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && inputValue) {
+      // If Enter is pressed and there's a value that doesn't match any project, treat as manual input
+      const matchingProject = projects.find(
+        p => p.name.toLowerCase() === inputValue.toLowerCase() || p.id === inputValue
+      );
+      if (!matchingProject) {
+        onChange(inputValue);
+        setIsOpen(false);
+      }
     }
   };
 
@@ -104,6 +123,8 @@ export default function ProjectSelector({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
           className={`
