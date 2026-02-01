@@ -1,8 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import { useChat, type UseChatOptions } from '@ai-sdk/react';
+import { type UIMessage, DefaultChatTransport } from 'ai';
 import { useTheme } from 'next-themes';
 import { useChatContext } from '@/contexts/ChatContext';
 import { MessageBubble, TypingIndicator } from './MessageBubble';
@@ -62,12 +62,7 @@ function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
 
 interface ChatProps {
   chatId?: string;
-  initialMessages?: Array<{
-    id: string;
-    role: 'user' | 'assistant' | 'system';
-    content?: string;
-    parts?: Array<{ type: string; text?: string }>;
-  }>;
+  initialMessages?: UIMessage[];
 }
 
 const EXAMPLE_PROMPTS = [
@@ -77,7 +72,7 @@ const EXAMPLE_PROMPTS = [
   'Summarize the current milestone status and list blockers',
 ];
 
-export function Chat({ chatId, initialMessages = [] }: ChatProps) {
+function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { transport: DefaultChatTransport<UIMessage> }) {
   const [modelId, setModelId] = useState('gemini-3-flash');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [localMessages] = useState(initialMessages);
@@ -94,22 +89,11 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
   const { 
     currentChatId, 
     setCurrentChatId, 
-    onChatCreated,
     registerResetCallback,
     mcpEnabled
   } = useChatContext();
 
-  // Use refs to avoid stale closures in transport
-  const currentChatIdRef = useRef(currentChatId);
-  const onChatCreatedRef = useRef(onChatCreated);
-  
-  useEffect(() => {
-    currentChatIdRef.current = currentChatId;
-  }, [currentChatId]);
-  
-  useEffect(() => {
-    onChatCreatedRef.current = onChatCreated;
-  }, [onChatCreated]);
+
 
   // Initialize currentChatId from prop
   useEffect(() => {
@@ -118,32 +102,14 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
     }
   }, [chatId, setCurrentChatId]);
 
-  // Transport with simple API configuration
-  const [transport] = useState(() => new DefaultChatTransport({
-    api: '/api/chat',
-    fetch: async (input, init) => {
-      const response = await globalThis.fetch(input, init);
-      
-      // Capture chat ID from response header for new chats
-      const newChatId = response.headers.get('X-Chat-Id');
-      if (newChatId && !currentChatIdRef.current) {
-        setCurrentChatId(newChatId);
-        window.history.replaceState(null, '', `/chat/${newChatId}`);
-        onChatCreatedRef.current();
-      }
-      
-      return response;
-    },
-  }));
 
-  // Prepare options with any cast to avoid TS issues with initialMessages
-  const useChatOptions: any = {
+
+  // Use useChat with transport
+  const { messages, status, error, sendMessage, setMessages } = useChat({
     id: chatId || 'new-chat',
-    initialMessages,
+    messages: initialMessages,
     transport,
-  };
-
-  const { messages, status, error, sendMessage, setMessages } = useChat(useChatOptions);
+  } as UseChatOptions<UIMessage> & { transport?: DefaultChatTransport<UIMessage> });
 
   // Reset dismissed error when a new error occurs is handled by the render logic (error !== dismissedError)
   // We don't need a useEffect here to avoid "setState during render" warning.
@@ -549,4 +515,42 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
       </div>
     </div>
   );
+}
+
+export function Chat(props: ChatProps) {
+  const [transport, setTransport] = useState<DefaultChatTransport<UIMessage> | null>(null);
+  const { currentChatId, setCurrentChatId, onChatCreated } = useChatContext();
+  
+  // Refs for transport closure
+  const currentChatIdRef = useRef(currentChatId);
+  const onChatCreatedRef = useRef(onChatCreated);
+  
+  useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
+  useEffect(() => { onChatCreatedRef.current = onChatCreated; }, [onChatCreated]);
+  
+  useEffect(() => {
+    const t = new DefaultChatTransport({
+      api: '/api/chat',
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await globalThis.fetch(input, init);
+        
+        // Capture chat ID from response header for new chats
+        const newChatId = response.headers.get('X-Chat-Id');
+        if (newChatId && !currentChatIdRef.current) {
+          setCurrentChatId(newChatId);
+          window.history.replaceState(null, '', `/chat/${newChatId}`);
+          if (onChatCreatedRef.current) {
+             onChatCreatedRef.current();
+          }
+        }
+        
+        return response;
+      },
+    });
+    setTransport(t);
+  }, [setCurrentChatId]);
+
+  if (!transport) return null;
+
+  return <ChatInner {...props} transport={transport} />;
 }
