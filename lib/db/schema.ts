@@ -46,7 +46,7 @@ export const UserSettingsSchema = z.object({
   SK: z.literal('SETTINGS'),
   userId: z.string(),
   mcpEnabled: z.boolean().default(false),
-  gitlabAccessToken: z.string().optional(),
+  gitlabAccessToken: z.string(),
   gitlabRefreshToken: z.string().optional(),
   gitlabTokenExpiry: z.string().optional(),
   gitlabUsername: z.string().optional(),

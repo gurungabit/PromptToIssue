@@ -1,9 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useChat } from '@ai-sdk/react';
-
+import { DefaultChatTransport } from 'ai';
 import { useTheme } from 'next-themes';
 import { useChatContext } from '@/contexts/ChatContext';
 import { MessageBubble, TypingIndicator } from './MessageBubble';
@@ -11,9 +10,6 @@ import { ChatInput } from './ChatInput';
 import { SettingsPanel } from '../SettingsPanel';
 import { Settings, X, AlertCircle, ChevronDown, Sparkles, Search, Edit3, Zap } from 'lucide-react';
 import { ToolInvocation } from './types';
-
-// Infer Message type from useChat return type to ensure compatibility
-type Message = ReturnType<typeof useChat>['messages'][number];
 
 // Part type for tool invocations in AI SDK v6
 // Tool parts have type: "tool-{toolName}" with input/output properties
@@ -66,7 +62,12 @@ function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
 
 interface ChatProps {
   chatId?: string;
-  initialMessages?: Array<Message>;
+  initialMessages?: Array<{
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content?: string;
+    parts?: Array<{ type: string; text?: string }>;
+  }>;
 }
 
 const EXAMPLE_PROMPTS = [
@@ -77,7 +78,6 @@ const EXAMPLE_PROMPTS = [
 ];
 
 export function Chat({ chatId, initialMessages = [] }: ChatProps) {
-  const router = useRouter();
   const [modelId, setModelId] = useState('gemini-3-flash');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [localMessages] = useState(initialMessages);
@@ -118,25 +118,29 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
     }
   }, [chatId, setCurrentChatId]);
 
-  // Prepare options
-  const useChatOptions = {
-    id: chatId || 'new-chat',
-    initialMessages,
+  // Transport with simple API configuration
+  const [transport] = useState(() => new DefaultChatTransport({
     api: '/api/chat',
-    onResponse: (response: Response) => {
+    fetch: async (input, init) => {
+      const response = await globalThis.fetch(input, init);
+      
       // Capture chat ID from response header for new chats
       const newChatId = response.headers.get('X-Chat-Id');
-      console.log('[Chat] onResponse: newChatId=', newChatId, 'currentRef=', currentChatIdRef.current);
-      
-      
       if (newChatId && !currentChatIdRef.current) {
-        console.log('[Chat] Setting new chat ID from header:', newChatId);
         setCurrentChatId(newChatId);
-        // Use router to navigate to the new chat URL to ensure consistent state
-        router.replace(`/chat/${newChatId}`);
-        onChatCreatedRef.current?.();
+        window.history.replaceState(null, '', `/chat/${newChatId}`);
+        onChatCreatedRef.current();
       }
+      
+      return response;
     },
+  }));
+
+  // Prepare options with any cast to avoid TS issues with initialMessages
+  const useChatOptions: any = {
+    id: chatId || 'new-chat',
+    initialMessages,
+    transport,
   };
 
   const { messages, status, error, sendMessage, setMessages } = useChat(useChatOptions);
@@ -338,17 +342,12 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
   function handleSend(content: string) {
     // Clear any dismissed error on new send
     setDismissedError(null);
-    
-    // Use ref as fallback to ensure we always have the latest ID even if render is pending
-    const effectiveChatId = currentChatId || currentChatIdRef.current;
-    console.log('[Chat] handleSend: Sending message with chatId:', effectiveChatId);
-    
     sendMessage(
       { text: content },
       {
         body: {
           modelId,
-          chatId: effectiveChatId,
+          chatId: currentChatId,
           mcpEnabled,
         },
       }
@@ -402,7 +401,7 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
 
               <h1 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                 Welcome to Prompt-to-Issue
-              </h1>
+            </h1>
               <p className={`text-base max-w-md mx-auto leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
                 I&apos;m here to help you manage your work on GitLab. No complicated forms needed—just talk to me!
               </p>
@@ -449,7 +448,7 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
                   key={prompt}
                   onClick={() => handleSend(prompt)}
                   disabled={isLoading}
-                  className={`group relative text-left p-4 rounded-xl transition-all duration-200 border hover:-translate-y-0.5 ${
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors disabled:opacity-50 ${
                     isDark 
                       ? 'bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-800/60 hover:border-zinc-700 text-zinc-300' 
                       : 'bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-md text-zinc-600'
@@ -465,7 +464,7 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
                        <Sparkles className="w-4 h-4" />}
                     </div>
                     <span className="text-sm font-medium leading-tight opacity-90 group-hover:opacity-100">
-                      {prompt}
+                  {prompt}
                     </span>
                   </div>
                 </button>

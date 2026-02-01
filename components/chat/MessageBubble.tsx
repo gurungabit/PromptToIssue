@@ -71,11 +71,7 @@ export const MessageBubble = memo(function MessageBubble({
             )}
             <ArtifactRenderer content={content} onTicketCreated={onTicketCreated} onBulkTicketsCreated={onBulkTicketsCreated} />
             {isStreaming && (
-              <span className="inline-flex ml-1 items-center gap-0.5 relative top-0.5" aria-label="Typing">
-                <span className="w-1 h-1 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-pulse" />
-                <span className="w-1 h-1 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-pulse [animation-delay:150ms]" />
-                <span className="w-1 h-1 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-pulse [animation-delay:300ms]" />
-              </span>
+              <TypingIndicator />
             )}
             {/* Action buttons for assistant messages */}
             {isAssistant && !isStreaming && content && (
