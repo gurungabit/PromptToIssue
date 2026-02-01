@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Theme variables */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 250 250 250;
+  --foreground: 24 24 27;
+  --card: 255 255 255;
+  --card-foreground: 24 24 27;
+  --border: 228 228 231;
+  --muted: 244 244 245;
+  --muted-foreground: 113 113 122;
+  --primary: 24 24 27;
+  --primary-foreground: 250 250 250;
+  --accent: 244 244 245;
+  --accent-foreground: 24 24 27;
+  --success: 34 197 94;
+  --error: 239 68 68;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --background: 9 9 11;
+  --foreground: 250 250 250;
+  --card: 24 24 27;
+  --card-foreground: 250 250 250;
+  --border: 39 39 42;
+  --muted: 39 39 42;
+  --muted-foreground: 161 161 170;
+  --primary: 250 250 250;
+  --primary-foreground: 9 9 11;
+  --accent: 39 39 42;
+  --accent-foreground: 250 250 250;
+  --success: 34 197 94;
+  --error: 239 68 68;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Base styles */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+}
+
+/* Add cursor pointer to all interactive elements */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  cursor: pointer;
+}
+
+/* Ensure disabled elements show not-allowed cursor */
+button:disabled,
+a:disabled {
+  cursor: not-allowed;
 }
