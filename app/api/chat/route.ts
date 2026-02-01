@@ -153,11 +153,7 @@ export async function POST(request: Request) {
       console.log('[API] Loading GitLab tools...');
       // Import and create GitLab tools dynamically
       const { createGitLabTools } = await import('@/lib/mcp/gitlab-tools');
-      tools = createGitLabTools({
-        accessToken: userSettings.gitlabAccessToken,
-        refreshToken: userSettings.gitlabRefreshToken,
-        userId: session.user.id,
-      }, modelId);
+      tools = createGitLabTools(userSettings.gitlabAccessToken, modelId);
       console.log('[API] Tools loaded:', Object.keys(tools));
     } else {
       console.log('[API] Tools disabled or no token');

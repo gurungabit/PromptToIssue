@@ -1,6 +1,5 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { updateUserSettings } from '@/lib/db/client';
 
 const GITLAB_URL = process.env.GITLAB_URL || 'https://gitlab.com';
 
@@ -38,71 +37,20 @@ interface GitLabIssue {
   closed_at: string | null;
 }
 
-interface GitLabMergeRequest {
-  id: number;
-  iid: number;
-  title: string;
-  description: string | null;
-  state: string;
-  web_url: string;
-  author: { username: string } | null;
-  created_at: string;
-}
-
 // Helper to make authenticated GitLab API requests
-// Helper to make authenticated GitLab API requests with retry
-export async function gitlabFetch<T>(
+async function gitlabFetch<T>(
   endpoint: string,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string },
+  accessToken: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const makeRequest = (token: string) => fetch(`${GITLAB_URL}/api/v4${endpoint}`, {
+  const response = await fetch(`${GITLAB_URL}/api/v4${endpoint}`, {
     ...options,
     headers: {
       ...options.headers,
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
   });
-
-  let response = await makeRequest(tokens.accessToken);
-
-  // Handle 401 Unauthorized by attempting refresh
-  if (response.status === 401 && tokens.refreshToken && tokens.userId) {
-    console.log('[GitLab] Token expired, attempting refresh...');
-    try {
-      const refreshResponse = await fetch(`${GITLAB_URL}/oauth/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.GITLAB_APP_ID,
-          client_secret: process.env.GITLAB_APP_SECRET,
-          refresh_token: tokens.refreshToken,
-          grant_type: 'refresh_token',
-          redirect_uri: (process.env.NEXTAUTH_URL || 'http://localhost:3000') + '/settings',
-        }),
-      });
-
-      if (refreshResponse.ok) {
-        const newTokens = await refreshResponse.json();
-        console.log('[GitLab] Token refreshed successfully');
-        
-        // Update DB
-        await updateUserSettings(tokens.userId, {
-            gitlabAccessToken: newTokens.access_token,
-            gitlabRefreshToken: newTokens.refresh_token,
-            gitlabTokenExpiry: String(Math.floor(Date.now() / 1000) + newTokens.expires_in),
-        });
-        
-        // Retry with new token
-        response = await makeRequest(newTokens.access_token);
-      } else {
-        console.error('[GitLab] Refresh failed:', await refreshResponse.text());
-      }
-    } catch (error) {
-       console.error('[GitLab] Refresh error:', error);
-    }
-  }
 
   if (!response.ok) {
     const error = await response.text();
@@ -163,27 +111,10 @@ export const addIssueCommentSchema = z.object({
   body: z.string().describe('Comment text (Markdown supported)'),
 });
 
-export const searchGitLabSchema = z.object({
-  query: z.string().describe('Search term'),
-  type: z.enum(['projects', 'issues', 'merge_requests']).default('projects').describe('Type of resource to search'),
-});
-
-export const getFileContentSchema = z.object({
-  projectId: z.union([z.string(), z.number()]).describe('Project ID or path'),
-  filePath: z.string().describe('Path to file in repository (e.g., "README.md")'),
-  ref: z.string().optional().describe('Branch or commit ref, defaults to default branch'),
-});
-
-export const listRepoFilesSchema = z.object({
-  projectId: z.union([z.string(), z.number()]).describe('Project ID or path'),
-  path: z.string().optional().describe('Path inside repository to list'),
-  recursive: z.boolean().optional().describe('List files recursively'),
-});
-
 // Tool executor functions
 export async function executeListProjects(
   params: z.infer<typeof listProjectsSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
+  accessToken: string
 ) {
   const searchParams = new URLSearchParams();
   if (params.search) searchParams.set('search', params.search);
@@ -194,7 +125,7 @@ export async function executeListProjects(
   if (showMembership) searchParams.set('membership', 'true');
   searchParams.set('per_page', String(params.perPage || 20));
 
-  const projects = await gitlabFetch<GitLabProject[]>(`/projects?${searchParams}`, tokens);
+  const projects = await gitlabFetch<GitLabProject[]>(`/projects?${searchParams}`, accessToken);
   return projects.map((p) => ({
     id: p.id,
     name: p.name,
@@ -209,11 +140,11 @@ export async function executeListProjects(
 
 export async function executeGetProject(
   params: z.infer<typeof getProjectSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
+  accessToken: string
 ) {
   const project = await gitlabFetch<GitLabProject>(
     `/projects/${encodeURIComponent(String(params.projectId))}`,
-    tokens
+    accessToken
   );
   return {
     id: project.id,
@@ -233,7 +164,7 @@ export async function executeGetProject(
 
 export async function executeSearchIssues(
   params: z.infer<typeof searchIssuesSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
+  accessToken: string
 ) {
   const searchParams = new URLSearchParams();
   if (params.search) searchParams.set('search', params.search);
@@ -244,7 +175,7 @@ export async function executeSearchIssues(
 
   const issues = await gitlabFetch<GitLabIssue[]>(
     `/projects/${encodeURIComponent(String(params.projectId))}/issues?${searchParams}`,
-    tokens
+    accessToken
   );
   return issues.map((i) => ({
     id: i.id,
@@ -263,11 +194,11 @@ export async function executeSearchIssues(
 
 export async function executeGetIssue(
   params: z.infer<typeof getIssueSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
+  accessToken: string
 ) {
   const issue = await gitlabFetch<GitLabIssue>(
     `/projects/${encodeURIComponent(String(params.projectId))}/issues/${params.issueIid}`,
-    tokens
+    accessToken
   );
   return {
     id: issue.id,
@@ -290,11 +221,11 @@ export async function executeGetIssue(
 
 export async function executeCreateIssue(
   params: z.infer<typeof createIssueSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
+  accessToken: string
 ) {
   const issue = await gitlabFetch<GitLabIssue>(
     `/projects/${encodeURIComponent(String(params.projectId))}/issues`,
-    tokens,
+    accessToken,
     {
       method: 'POST',
       body: JSON.stringify({
@@ -318,11 +249,11 @@ export async function executeCreateIssue(
 
 export async function executeUpdateIssue(
   params: z.infer<typeof updateIssueSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
+  accessToken: string
 ) {
   const issue = await gitlabFetch<GitLabIssue>(
     `/projects/${encodeURIComponent(String(params.projectId))}/issues/${params.issueIid}`,
-    tokens,
+    accessToken,
     {
       method: 'PUT',
       body: JSON.stringify({
@@ -344,11 +275,11 @@ export async function executeUpdateIssue(
 
 export async function executeAddIssueComment(
   params: z.infer<typeof addIssueCommentSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
+  accessToken: string
 ) {
   const note = await gitlabFetch<{ id: number; body: string; author: { username: string }; created_at: string }>(
     `/projects/${encodeURIComponent(String(params.projectId))}/issues/${params.issueIid}/notes`,
-    tokens,
+    accessToken,
     {
       method: 'POST',
       body: JSON.stringify({ body: params.body }),
@@ -362,157 +293,45 @@ export async function executeAddIssueComment(
   };
 }
 
-export async function executeSearchGitLab(
-  params: z.infer<typeof searchGitLabSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
-) {
-  const searchParams = new URLSearchParams();
-  searchParams.set('search', params.query);
-  searchParams.set('per_page', '20');
-
-  if (params.type === 'projects') {
-    searchParams.set('membership', 'true'); // Default to visible projects
-    const projects = await gitlabFetch<GitLabProject[]>(`/projects?${searchParams}`, tokens);
-    return projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      path: p.path_with_namespace,
-      webUrl: p.web_url,
-      description: p.description,
-    }));
-  } else if (params.type === 'issues') {
-    searchParams.set('scope', 'all'); // Search all accessible issues
-    const issues = await gitlabFetch<GitLabIssue[]>(`/issues?${searchParams}`, tokens);
-    return issues.map((i) => ({
-      id: i.id,
-      iid: i.iid,
-      title: i.title,
-      state: i.state,
-      webUrl: i.web_url,
-      author: i.author?.username,
-    }));
-  } else if (params.type === 'merge_requests') {
-    searchParams.set('scope', 'all');
-    const mrs = await gitlabFetch<GitLabMergeRequest[]>(`/merge_requests?${searchParams}`, tokens);
-    return mrs.map((mr) => ({
-      id: mr.id,
-      iid: mr.iid,
-      title: mr.title,
-      state: mr.state,
-      webUrl: mr.web_url,
-      author: mr.author?.username,
-    }));
-  }
-  return [];
-}
-
-export async function executeGetFileContent(
-  params: z.infer<typeof getFileContentSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
-) {
-  try {
-    const projectPath = encodeURIComponent(String(params.projectId));
-    const filePath = encodeURIComponent(params.filePath);
-    const ref = params.ref ? `&ref=${encodeURIComponent(params.ref)}` : '';
-    
-    const data = await gitlabFetch<{ content: string; file_name: string }>(
-      `/projects/${projectPath}/repository/files/${filePath}?${ref}`,
-      tokens
-    );
-
-    const content = Buffer.from(data.content, 'base64').toString('utf-8');
-    return { content, fileName: data.file_name };
-  } catch (error) {
-    return { error: `Error fetching file: ${error}` };
-  }
-}
-
-export async function executeListRepoFiles(
-  params: z.infer<typeof listRepoFilesSchema>,
-  tokens: { accessToken: string; refreshToken?: string; userId?: string }
-) {
-  try {
-    const projectPath = encodeURIComponent(String(params.projectId));
-    const pathParam = params.path ? `&path=${encodeURIComponent(params.path)}` : '';
-    const recursive = params.recursive ? '&recursive=true' : '';
-    
-    const data = await gitlabFetch<Array<{ name: string; path: string; type: string }>>(
-      `/projects/${projectPath}/repository/tree?per_page=50${pathParam}${recursive}`,
-      tokens
-    );
-    
-    return data.map((item) => ({
-      name: item.name,
-      path: item.path,
-      type: item.type, // 'blob' for files, 'tree' for directories
-    }));
-  } catch (error) {
-    return { error: `Error listing files: ${error}` };
-  }
-}
-
 // Factory function to create AI SDK v6 compatible tools
-export function createGitLabTools(
-  tokens: { accessToken: string; refreshToken?: string; userId?: string } | string, 
-  modelId?: string
-) {
-  const tokenData = typeof tokens === 'string' 
-    ? { accessToken: tokens } 
-    : tokens;
-
+export function createGitLabTools(accessToken: string, modelId?: string) {
   return {
     list_projects: tool({
       description: 'List GitLab projects the user has access to',
       inputSchema: listProjectsSchema,
       execute: async ({ search, owned, membership, perPage }) => 
-        executeListProjects({ search, owned, membership, perPage }, tokenData),
-    }),
-    search_gitlab: tool({
-      description: 'Global search across all GitLab projects. Can search for projects, issues, or merge requests.',
-      inputSchema: searchGitLabSchema,
-      execute: async ({ query, type }) => 
-        executeSearchGitLab({ query, type }, tokenData),
+        executeListProjects({ search, owned, membership, perPage }, accessToken),
     }),
     get_project: tool({
       description: 'Get detailed information about a specific GitLab project. You MUST provide the projectId parameter - either the numeric ID (e.g., 67612828) or the URL-encoded path (e.g., "necrokings/mcp"). Use list_projects first to find project IDs.',
       inputSchema: getProjectSchema,
       execute: async ({ projectId }) => 
-        executeGetProject({ projectId }, tokenData),
+        executeGetProject({ projectId }, accessToken),
     }),
     search_issues: tool({
       description: 'Search for issues in a GitLab project. You MUST provide the projectId parameter.',
       inputSchema: searchIssuesSchema,
       execute: async ({ projectId, search, state, labels, assigneeId, perPage }) => 
-        executeSearchIssues({ projectId, search, state, labels, assigneeId, perPage }, tokenData),
+        executeSearchIssues({ projectId, search, state, labels, assigneeId, perPage }, accessToken),
     }),
     get_issue: tool({
       description: 'Get detailed information about a specific issue. You MUST provide both projectId and issueIid.',
       inputSchema: getIssueSchema,
       execute: async ({ projectId, issueIid }) => 
-        executeGetIssue({ projectId, issueIid }, tokenData),
+        executeGetIssue({ projectId, issueIid }, accessToken),
     }),
     // NOTE: create_issue tool removed - ticket creation uses JSON widget + API route instead
     update_issue: tool({
       description: 'Update an existing issue. You MUST provide projectId and issueIid.',
       inputSchema: updateIssueSchema,
       execute: async ({ projectId, issueIid, title, description, labels, stateEvent }) => 
-        executeUpdateIssue({ projectId, issueIid, title, description, labels, stateEvent }, tokenData),
+        executeUpdateIssue({ projectId, issueIid, title, description, labels, stateEvent }, accessToken),
     }),
     add_issue_comment: tool({
       description: 'Add a comment/note to an issue. You MUST provide projectId, issueIid, and body.',
       inputSchema: addIssueCommentSchema,
       execute: async ({ projectId, issueIid, body }) => 
-        executeAddIssueComment({ projectId, issueIid, body }, tokenData),
-    }),
-    get_file_content: tool({
-      description: 'Read a file from the repository (e.g., README.md, package.json, etc.)',
-      inputSchema: getFileContentSchema,
-      execute: async (params) => executeGetFileContent(params, tokenData),
-    }),
-    list_repository_files: tool({
-      description: 'List files and directories in the repository to understand project structure',
-      inputSchema: listRepoFilesSchema,
-      execute: async (params) => executeListRepoFiles(params, tokenData),
+        executeAddIssueComment({ projectId, issueIid, body }, accessToken),
     }),
     research_project: tool({
       description: 'Perform comprehensive research on a GitLab project. This tool spawns a research sub-agent that gathers detailed information including project metadata, open issues, README content, and repository structure. Use this when you need thorough understanding of a project. You MUST provide the projectId.',
@@ -522,7 +341,7 @@ export function createGitLabTools(
       execute: async ({ projectId }) => {
         // Dynamically import to avoid circular dependencies
         const { researchProject } = await import('@/lib/ai/agents/research-agent');
-        return researchProject(projectId, tokenData.accessToken, modelId);
+        return researchProject(projectId, accessToken, modelId);
       },
     }),
   };

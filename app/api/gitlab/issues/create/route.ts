@@ -72,11 +72,10 @@ export async function POST(request: Request) {
 
     const fullDescription = descriptionParts.join('\n');
 
-    // 2. Construct Labels (include explicit labels only)
+    // 2. Construct Labels (include explicit labels + priority/type)
     const labels = new Set(ticket.labels || []);
-    // Removed automatic priority/type to label conversion per user request
-    // if (ticket.priority) labels.add(`priority::${ticket.priority}`);
-    // if (ticket.type) labels.add(`type::${ticket.type}`);
+    if (ticket.priority) labels.add(`priority::${ticket.priority}`);
+    if (ticket.type) labels.add(`type::${ticket.type}`);
     
     const labelsString = Array.from(labels).join(',');
 

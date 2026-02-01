@@ -39,7 +39,7 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
 
   const fetchChats = useCallback(async () => {
     try {
-      const response = await fetch('/api/chats', { cache: 'no-store' });
+      const response = await fetch('/api/chats');
       if (response.ok) {
         const data = await response.json();
         setChats(data);

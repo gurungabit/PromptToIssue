@@ -1,19 +1,15 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useChat } from '@ai-sdk/react';
-
+import { DefaultChatTransport } from 'ai';
 import { useTheme } from 'next-themes';
 import { useChatContext } from '@/contexts/ChatContext';
 import { MessageBubble, TypingIndicator } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { SettingsPanel } from '../SettingsPanel';
-import { Settings, X, AlertCircle, ChevronDown, Sparkles, Search, Edit3, Zap } from 'lucide-react';
+import { Settings, X, AlertCircle, ChevronDown } from 'lucide-react';
 import { ToolInvocation } from './types';
-
-// Infer Message type from useChat return type to ensure compatibility
-type Message = ReturnType<typeof useChat>['messages'][number];
 
 // Part type for tool invocations in AI SDK v6
 // Tool parts have type: "tool-{toolName}" with input/output properties
@@ -66,18 +62,21 @@ function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
 
 interface ChatProps {
   chatId?: string;
-  initialMessages?: Array<Message>;
+  initialMessages?: Array<{
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content?: string;
+    parts?: Array<{ type: string; text?: string }>;
+  }>;
 }
 
 const EXAMPLE_PROMPTS = [
-  'Create a bug report for "Login page crash" with acceptance criteria',
-  'Analyze open high-priority issues and suggest an action plan',
-  'Draft a feature ticket for "Dark Mode" including 3 subtasks',
-  'Summarize the current milestone status and list blockers',
+  'What is the meaning of life?',
+  'How can I improve my productivity?',
+  'Write a short poem about technology',
 ];
 
 export function Chat({ chatId, initialMessages = [] }: ChatProps) {
-  const router = useRouter();
   const [modelId, setModelId] = useState('gemini-3-flash');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [localMessages] = useState(initialMessages);
@@ -118,25 +117,29 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
     }
   }, [chatId, setCurrentChatId]);
 
-  // Prepare options
-  const useChatOptions = {
-    id: chatId || 'new-chat',
-    initialMessages,
+  // Transport with simple API configuration
+  const [transport] = useState(() => new DefaultChatTransport({
     api: '/api/chat',
-    onResponse: (response: Response) => {
+    fetch: async (input, init) => {
+      const response = await globalThis.fetch(input, init);
+      
       // Capture chat ID from response header for new chats
       const newChatId = response.headers.get('X-Chat-Id');
-      console.log('[Chat] onResponse: newChatId=', newChatId, 'currentRef=', currentChatIdRef.current);
-      
-      
       if (newChatId && !currentChatIdRef.current) {
-        console.log('[Chat] Setting new chat ID from header:', newChatId);
         setCurrentChatId(newChatId);
-        // Use router to navigate to the new chat URL to ensure consistent state
-        router.replace(`/chat/${newChatId}`);
-        onChatCreatedRef.current?.();
+        window.history.replaceState(null, '', `/chat/${newChatId}`);
+        onChatCreatedRef.current();
       }
+      
+      return response;
     },
+  }));
+
+  // Prepare options with any cast to avoid TS issues with initialMessages
+  const useChatOptions: any = {
+    id: chatId || 'new-chat',
+    initialMessages,
+    transport,
   };
 
   const { messages, status, error, sendMessage, setMessages } = useChat(useChatOptions);
@@ -338,17 +341,12 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
   function handleSend(content: string) {
     // Clear any dismissed error on new send
     setDismissedError(null);
-    
-    // Use ref as fallback to ensure we always have the latest ID even if render is pending
-    const effectiveChatId = currentChatId || currentChatIdRef.current;
-    console.log('[Chat] handleSend: Sending message with chatId:', effectiveChatId);
-    
     sendMessage(
       { text: content },
       {
         body: {
           modelId,
-          chatId: effectiveChatId,
+          chatId: currentChatId,
           mcpEnabled,
         },
       }
@@ -395,79 +393,23 @@ export function Chat({ chatId, initialMessages = [] }: ChatProps) {
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 relative">
         {!hasMessages ? (
-          <div className="h-full flex flex-col items-center justify-center px-4 pb-32 max-w-2xl mx-auto w-full">
-            
-            {/* Hero Section */}
-            <div className="text-center mb-8 space-y-3">
-
-              <h1 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-                Welcome to Prompt-to-Issue
-              </h1>
-              <p className={`text-base max-w-md mx-auto leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                I&apos;m here to help you manage your work on GitLab. No complicated forms needed—just talk to me!
-              </p>
-            </div>
-
-            {/* Getting Started Guide */}
-             <div className={`mb-8 w-full max-w-lg mx-auto rounded-lg p-5 border shadow-sm ${isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-                <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>Getting Started:</h3>
-                <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                        <div className={`flex shrink-0 items-center justify-center w-6 h-6 rounded-full text-xs font-semibold mt-0.5 ${isDark ? 'bg-zinc-800 text-zinc-300 ring-1 ring-zinc-700' : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'}`}>1</div>
-                        <div>
-                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Connect your account</p>
-                           <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                             Open <button onClick={() => setSettingsOpen(true)} className="text-blue-500 hover:underline font-medium focus:outline-none">Settings</button> to link your GitLab.
-                           </p>
-                        </div>
-                    </div>
-                     <div className="flex items-start gap-3">
-                        <div className={`flex shrink-0 items-center justify-center w-6 h-6 rounded-full text-xs font-semibold mt-0.5 ${isDark ? 'bg-zinc-800 text-zinc-300 ring-1 ring-zinc-700' : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'}`}>2</div>
-                        <div>
-                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Tell me what to do</p>
-                           <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                             Type &quot;Analyze open issues&quot; or &quot;Create a bug report&quot;.
-                           </p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <div className={`flex shrink-0 items-center justify-center w-6 h-6 rounded-full text-xs font-semibold mt-0.5 ${isDark ? 'bg-zinc-800 text-zinc-300 ring-1 ring-zinc-700' : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'}`}>3</div>
-                         <div>
-                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>I handle the rest</p>
-                           <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                             I&apos;ll create tickets, list milestones, and answer questions.
-                           </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Example Prompts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-              {EXAMPLE_PROMPTS.map((prompt, i) => (
+          <div className="h-full flex flex-col items-center justify-center px-4 pb-32">
+            <h1 className={`text-3xl font-semibold mb-8 ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+              How can I help you?
+            </h1>
+            <div className="max-w-xl w-full space-y-1">
+              {EXAMPLE_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => handleSend(prompt)}
                   disabled={isLoading}
-                  className={`group relative text-left p-4 rounded-xl transition-all duration-200 border hover:-translate-y-0.5 ${
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors disabled:opacity-50 ${
                     isDark 
-                      ? 'bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-800/60 hover:border-zinc-700 text-zinc-300' 
-                      : 'bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-md text-zinc-600'
+                      ? 'text-zinc-400 hover:text-white hover:bg-zinc-900' 
+                      : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 p-1.5 rounded-md transition-colors ${
-                      isDark ? 'bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200' : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200 group-hover:text-zinc-700'
-                    }`}>
-                      {i === 0 ? <Search className="w-4 h-4" /> :
-                       i === 1 ? <Edit3 className="w-4 h-4" /> :
-                       i === 2 ? <Zap className="w-4 h-4" /> :
-                       <Sparkles className="w-4 h-4" />}
-                    </div>
-                    <span className="text-sm font-medium leading-tight opacity-90 group-hover:opacity-100">
-                      {prompt}
-                    </span>
-                  </div>
+                  {prompt}
                 </button>
               ))}
             </div>
