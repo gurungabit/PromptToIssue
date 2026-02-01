@@ -72,10 +72,8 @@ export async function POST(request: Request) {
 
     const fullDescription = descriptionParts.join('\n');
 
-    // 2. Construct Labels (include explicit labels + priority/type)
+    // 2. Construct Labels (include explicit labels)
     const labels = new Set(ticket.labels || []);
-    if (ticket.priority) labels.add(`priority::${ticket.priority}`);
-    if (ticket.type) labels.add(`type::${ticket.type}`);
     
     const labelsString = Array.from(labels).join(',');
 
