@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth/auth';
 import { getModel, getDefaultModel } from '@/lib/ai/models/registry';
 import { getModelConfig } from '@/lib/ai/models/config';
 import { db } from '@/lib/db/client';
+import type { MessagePart } from '@/lib/db/schema';
 import { nanoid } from 'nanoid';
 import { DEFAULT_SYSTEM_PROMPT } from '@/lib/ai/prompts/system';
 
@@ -150,7 +151,7 @@ export async function POST(request: Request) {
     });
 
     if (userSettings?.gitlabAccessToken && toolsEnabled) {
-      console.log('[API] Loading GitLab tools...');
+      console.log('[API] Loading GitLab tools... Has RefreshToken:', !!userSettings.gitlabRefreshToken);
       // Import and create GitLab tools dynamically
       const { createGitLabTools } = await import('@/lib/mcp/gitlab-tools');
       tools = createGitLabTools({
@@ -163,6 +164,21 @@ export async function POST(request: Request) {
       console.log('[API] Tools disabled or no token');
     }
     
+    // Aggregate tool calls and results across steps
+    interface ToolCall {
+      toolCallId: string;
+      toolName: string;
+      args: Record<string, unknown>;
+    }
+    interface ToolResult {
+      toolCallId: string;
+      toolName: string;
+      result: unknown;
+    }
+
+    const allToolCalls: ToolCall[] = [];
+    const allToolResults: ToolResult[] = [];
+
     // Stream the response
     const result = streamText({
       model,
@@ -170,15 +186,61 @@ export async function POST(request: Request) {
       messages: modelMessages,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       // Allow up to 5 steps for tool continuation
+      // Allow up to 5 steps for tool continuation
       // stepCountIs stops when step count reaches the specified number
       stopWhen: stepCountIs(5),
+      onStepFinish: async ({ toolCalls, toolResults }) => {
+        if (toolCalls) {
+          allToolCalls.push(...toolCalls.map((tc) => ({
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            // Cast to access SDK-specific property 'args' or 'input' safely
+            args: ((tc as unknown as { args: Record<string, unknown> }).args || (tc as unknown as { input: Record<string, unknown> }).input || {}) as Record<string, unknown>,
+          })));
+        }
+        if (toolResults) {
+          allToolResults.push(...toolResults.map((tr) => ({
+            toolCallId: tr.toolCallId,
+            toolName: tr.toolName,
+            // Cast to access SDK-specific property 'result' or 'output' safely
+            result: ((tr as unknown as { result: unknown }).result || (tr as unknown as { output: unknown }).output),
+          })));
+        }
+      },
       onFinish: async ({ text }) => {
-        // Save assistant message to database
+        // Construct parts array for persistence from aggregated data
+        const parts: MessagePart[] = [];
+        if (text) {
+          parts.push({ type: 'text', text });
+        }
+        
+        allToolCalls.forEach((tc) => {
+          parts.push({
+            type: 'tool-call',
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            args: tc.args,
+          });
+        });
+
+        allToolResults.forEach((tr) => {
+          parts.push({
+            type: 'tool-result',
+            toolCallId: tr.toolCallId,
+            toolName: tr.toolName,
+            result: tr.result,
+          });
+        });
+        
+        console.log('[API] Saving parts count:', parts.length, 'Tools:', allToolCalls.length);
+
+        // Save assistant message to database with parts
         await db.addMessage({
           id: nanoid(),
           chatId: currentChatId!,
           role: 'assistant',
-          content: text,
+          content: text || '',
+          parts: parts.length > 0 ? parts : undefined,
         });
       },
     });

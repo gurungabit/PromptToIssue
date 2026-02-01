@@ -73,7 +73,7 @@ const EXAMPLE_PROMPTS = [
 ];
 
 function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { transport: DefaultChatTransport<UIMessage> }) {
-  const [modelId, setModelId] = useState('gemini-3-flash');
+  const [modelId, setModelId] = useState('qwen3-8b');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [localMessages] = useState(initialMessages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -441,9 +441,12 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
           <div className="max-w-3xl mx-auto py-4">
             {allMessages.map((message, index) => {
               // Extract tool invocations from parts (AI SDK v6 format)
-              const toolInvocations = getToolInvocationsFromParts(
+              // Prefer existing toolInvocations if available (from ChatPage hydration)
+              const existingTools = (message as unknown as { toolInvocations?: ToolInvocation[] }).toolInvocations;
+              const calculatedTools = getToolInvocationsFromParts(
                 (message as unknown as { parts?: Array<{ type: string; [key: string]: unknown }> }).parts
               );
+              const toolInvocations = (existingTools && existingTools.length > 0) ? existingTools : calculatedTools;
               const isLastMessage = index === allMessages.length - 1;
               return (
                 <div key={message.id} ref={isLastMessage ? lastMessageRef : undefined}>

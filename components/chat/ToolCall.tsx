@@ -1,13 +1,13 @@
 'use client';
 
-import { Wrench, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Wrench, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useState, memo } from 'react';
 
 interface ToolCallProps {
   toolName: string;
   args: Record<string, unknown>;
   result?: unknown;
-  status: 'pending' | 'success' | 'error';
+  status: 'pending' | 'success' | 'error' | 'incomplete';
   error?: string;
 }
 
@@ -19,6 +19,7 @@ export const ToolCall = memo(function ToolCall({ toolName, args, result, status,
     pending: <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />,
     success: <CheckCircle className="w-4 h-4 text-green-400" />,
     error: <XCircle className="w-4 h-4 text-red-400" />,
+    incomplete: <HelpCircle className="w-4 h-4 text-zinc-500" />,
   }[status];
 
   const toolDisplayName = toolName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -52,11 +53,11 @@ export const ToolCall = memo(function ToolCall({ toolName, args, result, status,
           </div>
 
           {/* Result or Error */}
-          {status === 'success' && result !== undefined && (
+          {status === 'success' && (
             <div>
               <span className="text-xs text-zinc-500 uppercase tracking-wide">Result</span>
               <pre className="mt-1 text-xs text-zinc-400 bg-zinc-800/50 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto">
-                {JSON.stringify(result as object, null, 2)}
+                {result !== undefined ? JSON.stringify(result as object, null, 2) : <span className="italic text-zinc-600">No output</span>}
               </pre>
             </div>
           )}
@@ -67,6 +68,15 @@ export const ToolCall = memo(function ToolCall({ toolName, args, result, status,
               <pre className="mt-1 text-xs text-red-400/80 bg-red-500/10 rounded p-2 overflow-x-auto">
                 {error}
               </pre>
+            </div>
+          )}
+
+          {status === 'incomplete' && (
+            <div>
+              <span className="text-xs text-zinc-500 uppercase tracking-wide">Status</span>
+              <div className="mt-1 text-xs text-zinc-400 bg-zinc-800/50 rounded p-2">
+                Tool call incomplete (no result captured)
+              </div>
             </div>
           )}
         </div>
@@ -81,7 +91,7 @@ interface ToolCallsDisplayProps {
     name: string;
     args: Record<string, unknown>;
     result?: unknown;
-    status: 'pending' | 'success' | 'error';
+    status: 'pending' | 'success' | 'error' | 'incomplete';
     error?: string;
   }>;
 }

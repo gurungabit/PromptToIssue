@@ -23,7 +23,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [mounted, setMounted] = useState(false);
   const { mcpEnabled, setMcpEnabled } = useChatContext();
   const [settings, setSettings] = useState<UserSettings>({
-    defaultModel: 'gemini-3-flash',
+    defaultModel: 'qwen3-8b',
     gitlabConnected: false,
   });
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           const userSettings = response.ok ? await response.json() : null;
           
           setSettings({
-            defaultModel: savedModel || 'gemini-3-flash',
+            defaultModel: savedModel || 'qwen3-8b',
             gitlabConnected: !!userSettings?.gitlabUsername,
             gitlabUsername: userSettings?.gitlabUsername,
           });

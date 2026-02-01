@@ -64,7 +64,7 @@ export const MessageBubble = memo(function MessageBubble({
                   name: inv.toolName,
                   args: inv.args,
                   result: 'result' in inv ? inv.result : undefined,
-                  status: 'result' in inv ? 'success' : 'pending',
+                  status: inv.state === 'result' ? 'success' : (isStreaming ? 'pending' : 'incomplete'),
                   error: undefined // 'error' in inv ? inv.error : undefined (ToolInvocation type varies)
                 }))} />
               </div>

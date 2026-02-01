@@ -68,39 +68,51 @@ export async function gitlabFetch<T>(
   let response = await makeRequest(tokens.accessToken);
 
   // Handle 401 Unauthorized by attempting refresh
-  if (response.status === 401 && tokens.refreshToken && tokens.userId) {
-    console.log('[GitLab] Token expired, attempting refresh...');
-    try {
-      const refreshResponse = await fetch(`${GITLAB_URL}/oauth/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.GITLAB_APP_ID,
-          client_secret: process.env.GITLAB_APP_SECRET,
+  if (response.status === 401) {
+    console.log('[GitLab] Received 401. Refresh Token present?', !!tokens.refreshToken, 'UserId present?', !!tokens.userId);
+    
+    if (tokens.refreshToken && tokens.userId) {
+      console.log('[GitLab] Attempting token refresh...');
+      try {
+        const payload = {
+          client_id: process.env.GITLAB_CLIENT_ID || process.env.GITLAB_APP_ID,
+          client_secret: process.env.GITLAB_CLIENT_SECRET || process.env.GITLAB_APP_SECRET,
           refresh_token: tokens.refreshToken,
           grant_type: 'refresh_token',
-          redirect_uri: (process.env.NEXTAUTH_URL || 'http://localhost:3000') + '/settings',
-        }),
-      });
-
-      if (refreshResponse.ok) {
-        const newTokens = await refreshResponse.json();
-        console.log('[GitLab] Token refreshed successfully');
+          redirect_uri: process.env.GITLAB_REDIRECT_URI || ((process.env.NEXTAUTH_URL || 'http://localhost:3000') + '/api/gitlab/callback'),
+        };
+        console.log('[GitLab] Refresh payload redirect_uri:', payload.redirect_uri);
         
-        // Update DB
-        await updateUserSettings(tokens.userId, {
-            gitlabAccessToken: newTokens.access_token,
-            gitlabRefreshToken: newTokens.refresh_token,
-            gitlabTokenExpiry: String(Math.floor(Date.now() / 1000) + newTokens.expires_in),
+        const refreshResponse = await fetch(`${GITLAB_URL}/oauth/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
-        
-        // Retry with new token
-        response = await makeRequest(newTokens.access_token);
-      } else {
-        console.error('[GitLab] Refresh failed:', await refreshResponse.text());
+
+        console.log('[GitLab] Refresh response status:', refreshResponse.status);
+
+        if (refreshResponse.ok) {
+          const newTokens = await refreshResponse.json();
+          console.log('[GitLab] Token refreshed successfully');
+          
+          // Update DB
+          await updateUserSettings(tokens.userId, {
+              gitlabAccessToken: newTokens.access_token,
+              gitlabRefreshToken: newTokens.refresh_token,
+              gitlabTokenExpiry: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+          });
+          
+          // Retry with new token
+          response = await makeRequest(newTokens.access_token);
+        } else {
+          console.error('[GitLab] Refresh failed with status:', refreshResponse.status);
+          console.error('[GitLab] Refresh error body:', await refreshResponse.text());
+        }
+      } catch (error) {
+         console.error('[GitLab] Refresh execution error:', error);
       }
-    } catch (error) {
-       console.error('[GitLab] Refresh error:', error);
+    } else {
+        console.warn('[GitLab] Cannot refresh: Missing refresh token or userId');
     }
   }
 

@@ -52,7 +52,7 @@ export async function researchProject(
     : tokens;
     
   // Get the model for research (default to a capable model)
-  const model = getModel(modelId || 'gemini-2.5-flash');
+  const model = getModel(modelId || 'qwen3-8b');
   
   // Create research-specific tools
   const researchTools = {

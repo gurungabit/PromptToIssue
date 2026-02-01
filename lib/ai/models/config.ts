@@ -24,6 +24,18 @@ export type ModelConfig = z.infer<typeof ModelConfigSchema>;
 // Available models configuration
 // Add/remove models here - no code changes needed elsewhere
 export const MODELS: ModelConfig[] = [
+    {
+    id: 'qwen3-8b',
+    provider: 'ollama',
+    modelId: 'qwen3:8b',
+    enabled: true,
+    displayName: 'Qwen3 8B (Ollama)',
+    description: 'Local Qwen3 8B model via Ollama',
+    defaultParams: {
+      temperature: 0.7,
+      maxTokens: 4096,
+    },
+  },
   {
     id: 'gemini-3-flash',
     provider: 'google',
@@ -67,18 +79,6 @@ export const MODELS: ModelConfig[] = [
     enabled: true,
     displayName: 'GPT-OSS 120B',
     description: 'Free open source GPT model via OpenRouter',
-    defaultParams: {
-      temperature: 0.7,
-      maxTokens: 4096,
-    },
-  },
-  {
-    id: 'qwen3-8b',
-    provider: 'ollama',
-    modelId: 'qwen3:8b',
-    enabled: true,
-    displayName: 'Qwen3 8B (Ollama)',
-    description: 'Local Qwen3 8B model via Ollama',
     defaultParams: {
       temperature: 0.7,
       maxTokens: 4096,
