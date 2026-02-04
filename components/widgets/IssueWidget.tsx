@@ -8,8 +8,7 @@ import {
   ExternalLink,
   Plus,
   X,
-  Trash2,
-  Folder
+  Trash2
 } from 'lucide-react';
 import type { Ticket, Task } from '@/lib/ai/schemas';
 import { useToast } from '@/components/ui/Toast';
@@ -227,24 +226,7 @@ export function IssueWidget({ issue, status = 'preview', className = '', isReadO
                   placeholder="Ticket Title"
                 />
                 
-                {/* Project ID Input */}
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={editedIssue.projectId || ''}
-                        onChange={(e) => setEditedIssue({ ...editedIssue, projectId: e.target.value })}
-                        className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-md px-3 py-2 text-xs font-mono text-zinc-600 dark:text-zinc-400 focus:outline-none focus:border-blue-500"
-                        placeholder="Project Path (e.g. org/repo) or ID"
-                    />
-                    <button
-                        type="button"
-                        onClick={() => setShowProjectSelector(true)}
-                        className="px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center gap-1.5"
-                    >
-                        <Folder className="w-3.5 h-3.5" />
-                        Browse
-                    </button>
-                </div>
+                {/* Project ID Input Removed */}
 
                 <div className="flex gap-3">
                     <select
