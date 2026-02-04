@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth/auth';
 import { db } from '@/lib/db/client';
+import { cookies } from 'next/headers';
 
 export async function POST() {
   try {
@@ -18,6 +19,11 @@ export async function POST() {
       gitlabUserId: undefined,
       mcpEnabled: false,
     });
+
+    const cookieStore = await cookies();
+    cookieStore.delete('gitlab_access_token');
+    cookieStore.delete('gitlab_refresh_token');
+    cookieStore.delete('gitlab_expiry');
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
