@@ -69,7 +69,13 @@ export const MessageBubble = memo(function MessageBubble({
                 }))} />
               </div>
             )}
-            <ArtifactRenderer content={content} onTicketCreated={onTicketCreated} onBulkTicketsCreated={onBulkTicketsCreated} />
+            <ArtifactRenderer 
+              content={content} 
+              chatId={chatId}
+              messageId={id}
+              onTicketCreated={onTicketCreated} 
+              onBulkTicketsCreated={onBulkTicketsCreated} 
+            />
             {isStreaming && (
               <TypingIndicator />
             )}

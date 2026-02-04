@@ -13,11 +13,13 @@ import { Check, Copy, Layers } from 'lucide-react';
 
 interface ArtifactRendererProps {
   content: string;
+  chatId?: string;
+  messageId?: string;
   onTicketCreated?: (ticketUrl: string, ticketTitle: string) => void;
   onBulkTicketsCreated?: (results: { ticket: string; webUrl?: string }[]) => void;
 }
 
-export function ArtifactRenderer({ content, onTicketCreated, onBulkTicketsCreated }: ArtifactRendererProps) {
+export function ArtifactRenderer({ content, chatId, messageId, onTicketCreated, onBulkTicketsCreated }: ArtifactRendererProps) {
   const parts = useMemo(() => parseContent(content), [content]);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkTickets, setBulkTickets] = useState<Ticket[]>([]);
@@ -27,13 +29,39 @@ export function ArtifactRenderer({ content, onTicketCreated, onBulkTicketsCreate
   const [editedTickets, setEditedTickets] = useState<Map<string, Ticket>>(new Map());
   
   // Handle ticket update from IssueWidget
-  const handleTicketUpdate = useCallback((ticketKey: string, updatedTicket: Ticket) => {
+  const handleTicketUpdate = useCallback(async (ticketKey: string, updatedTicket: Ticket) => {
+    console.log('[ArtifactRenderer] handleTicketUpdate called, key:', ticketKey, 'labels:', updatedTicket.labels);
+    
+    // Update local state immediately
     setEditedTickets(prev => {
       const next = new Map(prev);
       next.set(ticketKey, updatedTicket);
       return next;
     });
-  }, []);
+
+    // Persist to database if we have chatId and messageId
+    if (chatId && messageId) {
+      try {
+        // Reconstruct the full message content with updated ticket
+        // We need to update the JSON block in the message content
+        const updatedContent = updateContentWithTicket(content, ticketKey, updatedTicket);
+        
+        const response = await fetch('/api/messages/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatId, messageId, content: updatedContent }),
+        });
+
+        if (response.ok) {
+          console.log('[ArtifactRenderer] Ticket edit persisted to database');
+        } else {
+          console.error('[ArtifactRenderer] Failed to persist ticket edit:', await response.text());
+        }
+      } catch (error) {
+        console.error('[ArtifactRenderer] Error persisting ticket edit:', error);
+      }
+    }
+  }, [chatId, messageId, content]);
 
   const handleOpenBulkModal = useCallback((tickets: Ticket[]) => {
     // Use edited versions of tickets if available
@@ -181,6 +209,43 @@ function repairJson(jsonString: string): string {
   repaired = repaired.replace(/,\s*(\w+)\s*:/g, ',"$1":');
   
   return repaired;
+}
+
+// Helper to update the content with an edited ticket
+function updateContentWithTicket(content: string, ticketKey: string, updatedTicket: Ticket): string {
+  const jsonBlockRegex = /```json\n([\s\S]*?)\n```/g;
+  
+  return content.replace(jsonBlockRegex, (match, jsonStr) => {
+    try {
+      const repairedJson = repairJson(jsonStr);
+      const jsonContent = JSON.parse(repairedJson);
+      const result = ticketResponseSchema.safeParse(jsonContent);
+      
+      if (result.success && result.data.type === 'tickets') {
+        // Find and update the ticket
+        const updatedTickets = result.data.tickets.map((ticket, i) => {
+          const key = ticket.id || `ticket-${i}`;
+          if (key === ticketKey) {
+            return updatedTicket;
+          }
+          return ticket;
+        });
+        
+        // Reconstruct the JSON response
+        const updatedData = {
+          ...result.data,
+          tickets: updatedTickets,
+        };
+        
+        return '```json\n' + JSON.stringify(updatedData, null, 2) + '\n```';
+      }
+    } catch (e) {
+      console.warn('[ArtifactRenderer] Failed to update JSON block:', e);
+    }
+    
+    // Return original if parsing failed
+    return match;
+  });
 }
 
 function parseContent(content: string): ContentPart[] {

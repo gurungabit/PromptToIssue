@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -34,6 +34,20 @@ export function IssueWidget({ issue, status = 'preview', className = '', onUpdat
     tasks: issue.tasks || []
   });
 
+  // Sync editedIssue when the issue prop changes (e.g., from parent's editedTickets Map)
+  // Only sync if NOT currently editing to avoid overwriting user's unsaved changes
+  useEffect(() => {
+    if (!isEditing) {
+      console.log('[IssueWidget] useEffect syncing from prop, labels:', issue.labels);
+      setEditedIssue({
+        ...issue,
+        labels: issue.labels || [],
+        acceptanceCriteria: issue.acceptanceCriteria || [],
+        tasks: issue.tasks || []
+      });
+    }
+  }, [issue, isEditing]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
@@ -43,6 +57,7 @@ export function IssueWidget({ issue, status = 'preview', className = '', onUpdat
   const StateIcon = editedIssue.state === 'closed' ? CheckCircle2 : AlertCircle;
 
   function handleSave() {
+    console.log('[IssueWidget] handleSave called, labels:', editedIssue.labels);
     setIsEditing(false);
     onUpdate?.(editedIssue);
   }
@@ -56,6 +71,11 @@ export function IssueWidget({ issue, status = 'preview', className = '', onUpdat
     setIsSubmitting(true);
     try {
         const ticketData = { ...editedIssue, projectId: projectPath };
+        console.log('[IssueWidget] Creating ticket with data:', { 
+          title: ticketData.title, 
+          labels: ticketData.labels,
+          projectId: ticketData.projectId 
+        });
         
         const res = await fetch('/api/gitlab/issues/create', {
             method: 'POST',
@@ -167,10 +187,13 @@ export function IssueWidget({ issue, status = 'preview', className = '', onUpdat
   }
 
   function addLabel(label: string) {
+    console.log('[IssueWidget] addLabel called with:', label, 'current labels:', editedIssue.labels);
     if (label && !editedIssue.labels.includes(label)) {
+      const newLabels = [...editedIssue.labels, label];
+      console.log('[IssueWidget] Adding label, new labels:', newLabels);
       setEditedIssue({
         ...editedIssue,
-        labels: [...editedIssue.labels, label]
+        labels: newLabels
       });
     }
   }
@@ -447,7 +470,18 @@ export function IssueWidget({ issue, status = 'preview', className = '', onUpdat
                             className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-transparent border border-dashed border-zinc-300 dark:border-zinc-600 text-zinc-500 focus:outline-none focus:border-blue-500 focus:text-zinc-900 dark:focus:text-zinc-100 w-24 focus:w-auto transition-all"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                    addLabel(e.currentTarget.value);
+                                    e.preventDefault();
+                                    const value = e.currentTarget.value.trim();
+                                    if (value) {
+                                        addLabel(value);
+                                        e.currentTarget.value = '';
+                                    }
+                                }
+                            }}
+                            onBlur={(e) => {
+                                const value = e.currentTarget.value.trim();
+                                if (value) {
+                                    addLabel(value);
                                     e.currentTarget.value = '';
                                 }
                             }}
