@@ -32,18 +32,18 @@ function ToolCallItem({ tool }: { tool: ToolCall }) {
   const [expanded, setExpanded] = useState(false);
 
   const statusIcon = {
-    pending: <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />,
-    running: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
-    completed: <CheckCircle className="h-4 w-4 text-success" />,
-    error: <XCircle className="h-4 w-4 text-destructive" />,
+    pending: <Loader2 className="h-4 w-4 animate-spin text-zinc-500 dark:text-zinc-400" />,
+    running: <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />,
+    completed: <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-500" />,
+    error: <XCircle className="h-4 w-4 text-red-600 dark:text-red-500" />,
   }[tool.status];
 
   return (
     <div
       className="
-        border border-border rounded-[var(--radius)]
-        bg-surface
-        overflow-hidden
+        border rounded-lg overflow-hidden
+        border-zinc-300 bg-white
+        dark:border-zinc-700 dark:bg-zinc-800
       "
     >
       {/* Header */}
@@ -52,32 +52,32 @@ function ToolCallItem({ tool }: { tool: ToolCall }) {
         className="
           w-full px-3 py-2
           flex items-center gap-2
-          hover:bg-surface-hover
           transition-colors
           text-left
+          hover:bg-zinc-100 dark:hover:bg-zinc-700
         "
       >
         {statusIcon}
-        <Wrench className="h-4 w-4 text-muted-foreground" />
-        <span className="font-mono text-sm font-medium flex-1">
+        <Wrench className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+        <span className="font-mono text-sm font-medium flex-1 text-zinc-800 dark:text-zinc-100">
           {tool.toolName}
         </span>
         {expanded ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          <ChevronUp className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
         )}
       </button>
 
       {/* Expanded content */}
       {expanded && (
-        <div className="border-t border-border p-3 space-y-3">
+        <div className="border-t border-zinc-200 dark:border-zinc-700 p-3 space-y-3">
           {/* Arguments */}
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-1">
+            <h4 className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-wide">
               Arguments
             </h4>
-            <pre className="text-xs bg-surface-hover rounded-[var(--radius-sm)] p-2 overflow-x-auto">
+            <pre className="text-xs rounded p-2 overflow-x-auto bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
               {JSON.stringify(tool.args, null, 2)}
             </pre>
           </div>
@@ -85,10 +85,10 @@ function ToolCallItem({ tool }: { tool: ToolCall }) {
           {/* Result */}
           {tool.status === 'completed' && tool.result !== undefined && (
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-1">
+              <h4 className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-wide">
                 Result
               </h4>
-              <pre className="text-xs bg-surface-hover rounded-[var(--radius-sm)] p-2 overflow-x-auto max-h-40">
+              <pre className="text-xs rounded p-2 overflow-x-auto max-h-40 bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                 {typeof tool.result === 'string'
                   ? tool.result
                   : JSON.stringify(tool.result, null, 2)}
@@ -99,10 +99,10 @@ function ToolCallItem({ tool }: { tool: ToolCall }) {
           {/* Error */}
           {tool.status === 'error' && tool.error && (
             <div>
-              <h4 className="text-xs font-medium text-destructive mb-1">
+              <h4 className="text-xs font-medium text-red-600 dark:text-red-400 mb-1 uppercase tracking-wide">
                 Error
               </h4>
-              <pre className="text-xs bg-destructive/10 text-destructive rounded-[var(--radius-sm)] p-2">
+              <pre className="text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded p-2">
                 {tool.error}
               </pre>
             </div>
@@ -122,10 +122,10 @@ export function ToolCallBadge({
   status: 'pending' | 'running' | 'completed' | 'error';
 }) {
   const statusColor = {
-    pending: 'bg-muted-foreground/20 text-muted-foreground',
-    running: 'bg-primary/20 text-primary',
-    completed: 'bg-success/20 text-success',
-    error: 'bg-destructive/20 text-destructive',
+    pending: 'bg-zinc-200 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400',
+    running: 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
+    completed: 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400',
+    error: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400',
   }[status];
 
   return (

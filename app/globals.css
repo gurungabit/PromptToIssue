@@ -3,6 +3,12 @@
 /* Enable class-based dark mode for Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* System font stack */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
 /* Theme variables */
 :root {
   --background: 250 250 250;
@@ -40,6 +46,12 @@
 body {
   background-color: rgb(var(--background));
   color: rgb(var(--foreground));
+  font-family: var(--font-sans);
+}
+
+/* Monospace font for code blocks */
+code, pre, .font-mono {
+  font-family: var(--font-mono);
 }
 
 /* Add cursor pointer to all interactive elements */
