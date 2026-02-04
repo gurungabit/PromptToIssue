@@ -476,10 +476,12 @@ export async function executeGetFileContent(
 
     // Resolve ref (provided or default)
     const ref = await resolveProjectRef(params.projectId, params.ref, tokens);
-    const refParam = `&ref=${encodeURIComponent(ref)}`;
+
+    const searchParams = new URLSearchParams();
+    searchParams.set('ref', ref);
 
     const data = await gitlabFetch<{ content: string; file_name: string }>(
-      `/projects/${projectPath}/repository/files/${filePath}?${refParam}`,
+      `/projects/${projectPath}/repository/files/${filePath}?${searchParams.toString()}`,
       tokens,
     );
 
@@ -496,16 +498,18 @@ export async function executeListRepoFiles(
 ) {
   try {
     const projectPath = encodeURIComponent(String(params.projectId));
-    const pathParam = params.path ? `&path=${encodeURIComponent(params.path)}` : '';
-    const recursive = params.recursive ? '&recursive=true' : '';
 
     // Resolve ref to ensure we're looking at the right branch
-    // Note: tree API uses 'ref' query param to specify branch/tag/commit
     const ref = await resolveProjectRef(params.projectId, undefined, tokens);
-    const refParam = `&ref=${encodeURIComponent(ref)}`;
+
+    const searchParams = new URLSearchParams();
+    searchParams.set('ref', ref);
+    searchParams.set('per_page', '50');
+    if (params.path) searchParams.set('path', params.path);
+    if (params.recursive) searchParams.set('recursive', 'true');
 
     const data = await gitlabFetch<Array<{ name: string; path: string; type: string }>>(
-      `/projects/${projectPath}/repository/tree?per_page=50${pathParam}${recursive}${refParam}`,
+      `/projects/${projectPath}/repository/tree?${searchParams.toString()}`,
       tokens,
     );
 

@@ -9,7 +9,18 @@ import { MessageBubble, TypingIndicator } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 
 import { SettingsPanel } from '../SettingsPanel';
-import { Settings, X, AlertCircle, ChevronDown, Share2, Check } from 'lucide-react';
+import {
+  Settings,
+  X,
+  AlertCircle,
+  ChevronDown,
+  Share2,
+  Check,
+  ListTodo,
+  Search,
+  Code,
+  BookOpen,
+} from 'lucide-react';
 import { ToolInvocation } from './types';
 
 // Part type for tool invocations in AI SDK v6
@@ -67,10 +78,22 @@ interface ChatProps {
 }
 
 const EXAMPLE_PROMPTS = [
-  'Create a bug report for "Login page crash" with acceptance criteria',
-  'Analyze open high-priority issues and suggest an action plan',
-  'Draft a feature ticket for "Dark Mode" including 3 subtasks',
-  'Summarize the current milestone status and list blockers',
+  {
+    icon: ListTodo,
+    text: "Create issues to update 'nbus-aws' to use the latest node packages",
+  },
+  {
+    icon: Search,
+    text: "Analyze my GitLab repository 'nbus-aws' and explain its structure",
+  },
+  {
+    icon: Code,
+    text: 'Can you explain how binary search works with a Python example?',
+  },
+  {
+    icon: BookOpen,
+    text: 'How do I use the terraform-modules/terraform-aws-spa repository?',
+  },
 ];
 
 function ChatInner({
@@ -426,16 +449,31 @@ function ChatInner({
           <div className="h-full flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
             {/* Centered Empty State */}
             <div
-              className={`mb-8 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 slide-in-from-bottom-4`}
+              className={`mb-6 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 slide-in-from-bottom-4`}
             >
               <h1
                 className={`text-4xl font-bold mb-4 tracking-tight text-center ${isDark ? 'text-white' : 'text-zinc-900'}`}
               >
-                What can I help you build?
+                How can I help you today?
               </h1>
+              <p className={`text-center max-w-md ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                Turn ideas into GitLab issues, analyze code, or get development help.
+              </p>
             </div>
 
             <div className="w-full animate-in fade-in zoom-in-95 duration-500 delay-100 slide-in-from-bottom-6">
+              <div
+                className={`text-center text-xs mb-3 space-y-1 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
+              >
+                <p className="font-semibold">
+                  Please observe all AI Assistant Expectations. Do not include:
+                </p>
+                <p className="opacity-90 max-w-2xl mx-auto">
+                  Personal identifiers (customer name, claim#, policy#, contact info) • SSN, TIN,
+                  SIN, driver&apos;s license numbers • Financial account numbers, credit/debit card
+                  numbers • PHI, medical information • Usernames, passwords, or access keys
+                </p>
+              </div>
               <ChatInput
                 onSend={handleSend}
                 disabled={isLoading}
@@ -445,25 +483,34 @@ function ChatInner({
               />
             </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-2 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-200 slide-in-from-bottom-8">
-              {EXAMPLE_PROMPTS.slice(0, 4).map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => handleSend(prompt)}
-                  className={`text-sm text-left px-4 py-3 rounded-xl transition-all ${
-                    isDark
-                      ? 'bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200'
-                      : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900'
-                  }`}
-                >
-                  {prompt}
-                </button>
-              ))}
+            <div className="mt-8 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-200 slide-in-from-bottom-8">
+              <p
+                className={`text-center text-sm mb-4 ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}
+              >
+                Try one of these to get started
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {EXAMPLE_PROMPTS.map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(prompt.text)}
+                    className={`text-sm text-left px-4 py-3.5 rounded-xl transition-all flex items-start gap-3 group ${
+                      isDark
+                        ? 'bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 border border-transparent hover:border-zinc-700'
+                        : 'bg-white hover:bg-zinc-50 text-zinc-600 hover:text-zinc-900 border border-zinc-100 hover:border-zinc-200 shadow-sm hover:shadow'
+                    }`}
+                  >
+                    <prompt.icon
+                      className={`w-5 h-5 shrink-0 mt-0.5 ${isDark ? 'text-zinc-500 group-hover:text-zinc-300' : 'text-zinc-400 group-hover:text-zinc-600'}`}
+                    />
+                    <span className="line-clamp-2">{prompt.text}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* User Guide & Privacy Notice */}
+            {/* User Guide */}
             <div className="mt-12 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-300 slide-in-from-bottom-10 space-y-8">
-              {/* Usage Guide */}
               <div>
                 <h3
                   className={`text-sm font-semibold mb-3 uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}
@@ -516,29 +563,6 @@ function ChatInner({
                       Turn conversations into issues with one click.
                     </p>
                   </div>
-                </div>
-              </div>
-
-              {/* Privacy Notice */}
-              <div
-                className={`p-4 rounded-2xl border ${isDark ? 'bg-orange-900/10 border-orange-900/30' : 'bg-orange-50/50 border-orange-200/50'}`}
-              >
-                <h3
-                  className={`text-sm font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}
-                >
-                  Security & Privacy Notice
-                </h3>
-                <div
-                  className={`text-xs leading-relaxed space-y-2 ${isDark ? 'text-orange-300' : 'text-orange-600'}`}
-                >
-                  <p>Please observe all AI Assistant Expectations. Do not include:</p>
-                  <ul className="list-disc pl-4 space-y-0.5 opacity-90">
-                    <li>Personal identifiers (customer name, claim#, policy#, contact info)</li>
-                    <li>SSN, TIN, SIN, driver&apos;s license numbers</li>
-                    <li>Financial account numbers, credit/debit card numbers</li>
-                    <li>PHI, medical information</li>
-                    <li>Usernames, passwords, or access keys</li>
-                  </ul>
                 </div>
               </div>
             </div>
