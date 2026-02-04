@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Model provider schema
-export const ModelProviderSchema = z.enum(['openai', 'anthropic', 'google', 'openrouter', 'ollama']);
+export const ModelProviderSchema = z.enum(['openai', 'anthropic', 'google', 'openrouter', 'ollama', 'aide']);
 export type ModelProvider = z.infer<typeof ModelProviderSchema>;
 
 // Model configuration schema
@@ -24,7 +24,45 @@ export type ModelConfig = z.infer<typeof ModelConfigSchema>;
 // Available models configuration
 // Add/remove models here - no code changes needed elsewhere
 export const MODELS: ModelConfig[] = [
-    {
+  // AIDE Models (State Farm internal LLM API)
+  {
+    id: 'aide-claude-sonnet-4.5',
+    provider: 'aide',
+    modelId: 'claude-sonnet-4.5',
+    enabled: true,
+    displayName: 'Claude Sonnet 4.5 (AIDE)',
+    description: 'Latest Claude Sonnet via State Farm AIDE API',
+    defaultParams: {
+      temperature: 0.7,
+      maxTokens: 8192,
+    },
+  },
+  {
+    id: 'aide-claude-haiku-4.5',
+    provider: 'aide',
+    modelId: 'claude-haiku-4.5',
+    enabled: true,
+    displayName: 'Claude Haiku 4.5 (AIDE)',
+    description: 'Fast Claude Haiku via State Farm AIDE API',
+    defaultParams: {
+      temperature: 0.7,
+      maxTokens: 8192,
+    },
+  },
+  {
+    id: 'aide-gpt-4.1',
+    provider: 'aide',
+    modelId: 'gpt-4.1',
+    enabled: true,
+    displayName: 'GPT 4.1 (AIDE)',
+    description: 'GPT 4.1 via State Farm AIDE API',
+    defaultParams: {
+      temperature: 0.7,
+      maxTokens: 4096,
+    },
+  },
+  // Other providers
+  {
     id: 'qwen3-8b',
     provider: 'ollama',
     modelId: 'qwen3:8b',

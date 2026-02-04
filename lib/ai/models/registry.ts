@@ -1,6 +1,7 @@
 import { google } from '@ai-sdk/google';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { ollama } from 'ai-sdk-ollama';
+import { aide } from '../providers/aide';
 // Uncomment these when adding more providers
 // import { openai } from '@ai-sdk/openai';
 // import { anthropic } from '@ai-sdk/anthropic';
@@ -25,6 +26,8 @@ function createProviderInstance(config: ModelConfig): LanguageModel {
       return openrouter(config.modelId);
     case 'ollama':
       return ollama(config.modelId);
+    case 'aide':
+      return aide(config.modelId);
     // case 'openai':
     //   return openai(config.modelId);
     // case 'anthropic':
