@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth/auth';
 import { db } from '@/lib/db/client';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 const GITLAB_URL = process.env.GITLAB_URL || 'https://gitlab.com';
 const GITLAB_CLIENT_ID = process.env.GITLAB_CLIENT_ID;
@@ -79,6 +80,35 @@ export async function GET(request: Request) {
       gitlabTokenExpiry: new Date(Date.now() + expires_in * 1000).toISOString(),
       gitlabUsername: gitlabUser.username,
       gitlabUserId: String(gitlabUser.id),
+    });
+
+    // Set cookies for better session management
+    const cookieStore = await cookies();
+    cookieStore.set('gitlab_access_token', access_token, {
+      secure: true,
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: expires_in,
+    });
+
+    if (refresh_token) {
+      cookieStore.set('gitlab_refresh_token', refresh_token, {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+    }
+
+    // Expiry cookie (accessible to client to check validity)
+    cookieStore.set('gitlab_expiry', new Date(Date.now() + expires_in * 1000).toISOString(), {
+      secure: true,
+      httpOnly: false, // Allow client to read this
+      sameSite: 'lax',
+      path: '/',
+      maxAge: expires_in,
     });
 
     success = true;
