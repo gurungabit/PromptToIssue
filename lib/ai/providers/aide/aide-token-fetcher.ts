@@ -1,6 +1,6 @@
 /**
  * Azure OAuth2 Token Fetcher
- * 
+ *
  * Handles Azure AD token acquisition using client credentials flow
  * with automatic caching and refresh
  */
@@ -32,7 +32,7 @@ export function getAzureConfigFromEnv(): AzureTokenConfig {
   if (!tenantId || !clientId || !clientSecret || !scope) {
     throw new Error(
       'Missing Azure OAuth2 configuration. Required environment variables: ' +
-      'AIDE_AZURE_TENANT_ID, AIDE_AZURE_CLIENT_ID, AIDE_AZURE_CLIENT_SECRET, AIDE_AZURE_SCOPE'
+        'AIDE_AZURE_TENANT_ID, AIDE_AZURE_CLIENT_ID, AIDE_AZURE_CLIENT_SECRET, AIDE_AZURE_SCOPE',
     );
   }
 
@@ -63,14 +63,14 @@ async function fetchNewToken(config: AzureTokenConfig): Promise<CachedToken> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-      `Failed to fetch Azure token: ${response.status} ${response.statusText} - ${errorText}`
+      `Failed to fetch Azure token: ${response.status} ${response.statusText} - ${errorText}`,
     );
   }
 
   const data: AzureTokenResponse = await response.json();
 
   // Calculate expiry time (current time + expires_in seconds - buffer)
-  const expiresAt = Date.now() + (data.expires_in * 1000) - TOKEN_REFRESH_BUFFER_MS;
+  const expiresAt = Date.now() + data.expires_in * 1000 - TOKEN_REFRESH_BUFFER_MS;
 
   return {
     token: data.access_token,
@@ -127,7 +127,11 @@ export function clearTokenCache(): void {
 /**
  * Get token expiry info (for debugging)
  */
-export function getTokenExpiryInfo(): { hasToken: boolean; expiresAt: Date | null; isValid: boolean } {
+export function getTokenExpiryInfo(): {
+  hasToken: boolean;
+  expiresAt: Date | null;
+  isValid: boolean;
+} {
   return {
     hasToken: cachedToken !== null,
     expiresAt: cachedToken ? new Date(cachedToken.expiresAt) : null,

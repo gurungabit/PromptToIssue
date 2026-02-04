@@ -33,10 +33,7 @@ export function Select({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
@@ -47,11 +44,7 @@ export function Select({
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {label && (
-        <label className="block text-sm font-medium mb-1.5 text-foreground">
-          {label}
-        </label>
-      )}
+      {label && <label className="block text-sm font-medium mb-1.5 text-foreground">{label}</label>}
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -106,18 +99,12 @@ export function Select({
               `}
             >
               <div>
-                <div className="text-sm font-medium text-foreground">
-                  {option.label}
-                </div>
+                <div className="text-sm font-medium text-foreground">{option.label}</div>
                 {option.description && (
-                  <div className="text-xs text-muted-foreground">
-                    {option.description}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{option.description}</div>
                 )}
               </div>
-              {option.value === value && (
-                <Check className="h-4 w-4 text-primary" />
-              )}
+              {option.value === value && <Check className="h-4 w-4 text-primary" />}
             </button>
           ))}
         </div>

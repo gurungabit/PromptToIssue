@@ -9,7 +9,8 @@ const MOCK_TICKET_OPEN: Ticket = {
   projectId: 'test/project',
   iid: 123,
   title: 'Implement Dark Mode Support',
-  description: 'The application needs to support system dark mode preference and a manual toggle. Colors should default to Zinc palette.',
+  description:
+    'The application needs to support system dark mode preference and a manual toggle. Colors should default to Zinc palette.',
   state: 'opened',
   priority: 'high',
   type: 'feature',
@@ -17,18 +18,23 @@ const MOCK_TICKET_OPEN: Ticket = {
   acceptanceCriteria: [
     { id: 'ac-1', description: 'Respects system preference by default', completed: true },
     { id: 'ac-2', description: 'Manual toggle overrides system preference', completed: false },
-    { id: 'ac-3', description: 'Persists preference across sessions', completed: false }
+    { id: 'ac-3', description: 'Persists preference across sessions', completed: false },
   ],
   tasks: [
     { id: 'task-1', description: 'Install next-themes', completed: true, estimatedHours: 1 },
-    { id: 'task-2', description: 'Create ThemeToggle component', completed: false, estimatedHours: 2 },
-    { id: 'task-3', description: 'Update Tailwind config', completed: false, estimatedHours: 1 }
+    {
+      id: 'task-2',
+      description: 'Create ThemeToggle component',
+      completed: false,
+      estimatedHours: 2,
+    },
+    { id: 'task-3', description: 'Update Tailwind config', completed: false, estimatedHours: 1 },
   ],
   assignees: [
-    { id: 1, username: 'jdoe', name: 'John Doe', avatarUrl: 'https://github.com/shadcn.png' }
+    { id: 1, username: 'jdoe', name: 'John Doe', avatarUrl: 'https://github.com/shadcn.png' },
   ],
   labels: ['feature', 'frontend', 'ui/ux'],
-  webUrl: 'https://gitlab.com/org/project/issues/123'
+  webUrl: 'https://gitlab.com/org/project/issues/123',
 };
 
 const MOCK_TICKET_CLOSED: Ticket = {
@@ -42,7 +48,7 @@ const MOCK_TICKET_CLOSED: Ticket = {
   priority: 'critical',
   labels: ['bug', 'critical'],
   acceptanceCriteria: [],
-  tasks: []
+  tasks: [],
 };
 
 const MOCK_TICKET_DRAFT: Ticket = {
@@ -53,11 +59,9 @@ const MOCK_TICKET_DRAFT: Ticket = {
   priority: 'medium',
   type: 'refactor',
   estimatedHours: 16,
-  acceptanceCriteria: [
-    { id: 'ac-1', description: 'All existing tests pass', completed: false }
-  ],
+  acceptanceCriteria: [{ id: 'ac-1', description: 'All existing tests pass', completed: false }],
   tasks: [],
-  labels: ['tech-debt', 'backend']
+  labels: ['tech-debt', 'backend'],
 };
 
 const MOCK_AI_RESPONSE = `
@@ -95,10 +99,12 @@ export default function WidgetTestPage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-8 space-y-12">
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Ticket Widget Test (Advanced Schema)</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+          Ticket Widget Test (Advanced Schema)
+        </h1>
         <p className="text-zinc-500">Manual verification of widget states and data types.</p>
       </div>
-      
+
       {/* Existing Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start pb-12 border-b border-zinc-200 dark:border-zinc-800">
         <div className="space-y-4">
@@ -116,7 +122,7 @@ export default function WidgetTestPage() {
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Artifact Renderer Test</h2>
         <p className="text-zinc-500">Simulating AI response with embedded JSON block:</p>
-        
+
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm max-w-3xl">
           <ArtifactRenderer content={MOCK_AI_RESPONSE} />
         </div>

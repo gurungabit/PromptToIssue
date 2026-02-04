@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/auth";
-import { db } from "@/lib/db/client";
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth/auth';
+import { db } from '@/lib/db/client';
 
 export async function POST(request: Request) {
   try {
@@ -8,15 +8,15 @@ export async function POST(request: Request) {
 
     // User must be logged in to fork
     if (!session?.user) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response('Unauthorized', { status: 401 });
     }
 
     const { shareId } = await request.json();
 
     if (!shareId) {
-      return new Response(JSON.stringify({ error: "shareId is required" }), {
+      return new Response(JSON.stringify({ error: 'shareId is required' }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -24,9 +24,9 @@ export async function POST(request: Request) {
     const share = await db.getPublicShare(shareId);
 
     if (!share) {
-      return new Response(JSON.stringify({ error: "Shared chat not found" }), {
+      return new Response(JSON.stringify({ error: 'Shared chat not found' }), {
         status: 404,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -35,10 +35,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ newChatId });
   } catch (error) {
-    console.error("Fork API error:", error);
-    return new Response(JSON.stringify({ error: "Failed to fork chat" }), {
+    console.error('Fork API error:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fork chat' }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }

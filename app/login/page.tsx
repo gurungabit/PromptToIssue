@@ -10,7 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') ?? '/chat/new';
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -62,7 +62,10 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
+            >
               Email
             </label>
             <input
@@ -78,7 +81,10 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
+            >
               Password
             </label>
             <input

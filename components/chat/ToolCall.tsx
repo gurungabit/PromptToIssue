@@ -1,6 +1,14 @@
 'use client';
 
-import { Wrench, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import {
+  Wrench,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+} from 'lucide-react';
 import { useState, memo } from 'react';
 
 interface ToolCallProps {
@@ -12,7 +20,13 @@ interface ToolCallProps {
 }
 
 // Display a single tool call with expandable details
-export const ToolCall = memo(function ToolCall({ toolName, args, result, status, error }: ToolCallProps) {
+export const ToolCall = memo(function ToolCall({
+  toolName,
+  args,
+  result,
+  status,
+  error,
+}: ToolCallProps) {
   const [expanded, setExpanded] = useState(false);
 
   const statusIcon = {
@@ -32,7 +46,9 @@ export const ToolCall = memo(function ToolCall({ toolName, args, result, status,
         className="w-full flex items-center gap-3 px-3 py-2 transition-colors text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
       >
         <Wrench className="w-4 h-4 text-zinc-500" />
-        <span className="flex-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">{toolDisplayName}</span>
+        <span className="flex-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          {toolDisplayName}
+        </span>
         {statusIcon}
         {expanded ? (
           <ChevronUp className="w-4 h-4 text-zinc-500" />
@@ -46,7 +62,9 @@ export const ToolCall = memo(function ToolCall({ toolName, args, result, status,
         <div className="px-3 py-2 border-t space-y-2 border-zinc-200 dark:border-zinc-800">
           {/* Arguments */}
           <div>
-            <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Arguments</span>
+            <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+              Arguments
+            </span>
             <pre className="mt-1 text-xs rounded p-2 overflow-x-auto bg-zinc-100 text-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400">
               {typeof args === 'object' ? JSON.stringify(args, null, 2) : String(args)}
             </pre>
@@ -55,16 +73,24 @@ export const ToolCall = memo(function ToolCall({ toolName, args, result, status,
           {/* Result or Error */}
           {status === 'success' && (
             <div>
-              <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Result</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+                Result
+              </span>
               <pre className="mt-1 text-xs rounded p-2 overflow-x-auto max-h-48 overflow-y-auto bg-zinc-100 text-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400">
-                {result !== undefined ? JSON.stringify(result as object, null, 2) : <span className="italic text-zinc-400 dark:text-zinc-600">No output</span>}
+                {result !== undefined ? (
+                  JSON.stringify(result as object, null, 2)
+                ) : (
+                  <span className="italic text-zinc-400 dark:text-zinc-600">No output</span>
+                )}
               </pre>
             </div>
           )}
 
           {status === 'error' && error && (
             <div>
-              <span className="text-xs uppercase tracking-wide text-red-600 dark:text-red-400">Error</span>
+              <span className="text-xs uppercase tracking-wide text-red-600 dark:text-red-400">
+                Error
+              </span>
               <pre className="mt-1 text-xs rounded p-2 overflow-x-auto bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400/80">
                 {error}
               </pre>
@@ -73,7 +99,9 @@ export const ToolCall = memo(function ToolCall({ toolName, args, result, status,
 
           {status === 'incomplete' && (
             <div>
-              <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Status</span>
+              <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+                Status
+              </span>
               <div className="mt-1 text-xs rounded p-2 bg-zinc-100 text-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-400">
                 Tool call incomplete (no result captured)
               </div>

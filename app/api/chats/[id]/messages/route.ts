@@ -11,39 +11,30 @@ interface RouteParams {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return new Response('Unauthorized', { status: 401 });
     }
-    
+
     const { id: chatId } = await params;
     const chat = await db.getChat(chatId);
-    
+
     if (!chat) {
-      return NextResponse.json(
-        { error: 'Chat not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
     }
-    
+
     // Check ownership
     if (chat.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    
+
     const body = await request.json();
     const { role, content } = body;
-    
+
     if (!role || !content) {
-      return NextResponse.json(
-        { error: 'role and content are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'role and content are required' }, { status: 400 });
     }
-    
+
     const messageId = nanoid();
     const message = await db.addMessage({
       id: messageId,
@@ -52,13 +43,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       content,
       parts: [{ type: 'text', text: content }],
     });
-    
+
     return NextResponse.json(message);
   } catch (error) {
     console.error('Failed to add message:', error);
-    return NextResponse.json(
-      { error: 'Failed to add message' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to add message' }, { status: 500 });
   }
 }

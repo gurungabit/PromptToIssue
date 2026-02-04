@@ -32,11 +32,11 @@ interface ProjectSelectorModalProps {
   isCreating?: boolean;
 }
 
-export function ProjectSelectorModal({ 
-  open, 
-  onClose, 
+export function ProjectSelectorModal({
+  open,
+  onClose,
   onCreateTicket,
-  isCreating = false
+  isCreating = false,
 }: ProjectSelectorModalProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Record<number, Milestone[]>>({});
@@ -49,7 +49,7 @@ export function ProjectSelectorModal({
   const fetchProjects = useCallback(async () => {
     setLoading(true);
     try {
-      const url = searchQuery 
+      const url = searchQuery
         ? `/api/gitlab/projects?search=${encodeURIComponent(searchQuery)}`
         : '/api/gitlab/projects';
       const res = await fetch(url);
@@ -80,13 +80,13 @@ export function ProjectSelectorModal({
 
   const fetchMilestones = async (projectId: number) => {
     if (milestones[projectId]) return; // Already loaded
-    
+
     setLoadingMilestones(projectId);
     try {
       const res = await fetch(`/api/gitlab/milestones?projectId=${projectId}`);
       if (res.ok) {
         const data = await res.json();
-        setMilestones(prev => ({ ...prev, [projectId]: data }));
+        setMilestones((prev) => ({ ...prev, [projectId]: data }));
       }
     } catch (error) {
       console.error('Failed to fetch milestones:', error);
@@ -123,7 +123,7 @@ export function ProjectSelectorModal({
     await onCreateTicket(
       selectedProject.project.path,
       selectedProject.project.name,
-      selectedProject.milestoneId
+      selectedProject.milestoneId,
     );
   };
 
@@ -132,11 +132,8 @@ export function ProjectSelectorModal({
   return (
     <>
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-        onClick={onClose}
-      />
-      
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
+
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col pointer-events-auto border border-zinc-200 dark:border-zinc-700">
@@ -145,7 +142,7 @@ export function ProjectSelectorModal({
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
               Create Ticket in Project
             </h2>
-            <button 
+            <button
               onClick={onClose}
               className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
@@ -174,12 +171,10 @@ export function ProjectSelectorModal({
                 <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
               </div>
             ) : projects.length === 0 ? (
-              <div className="text-center py-12 text-zinc-500">
-                No projects found
-              </div>
+              <div className="text-center py-12 text-zinc-500">No projects found</div>
             ) : (
               <div className="space-y-1">
-                {projects.map(project => {
+                {projects.map((project) => {
                   const isSelected = selectedProject?.project.id === project.id;
                   const isExpanded = expandedProject === project.id;
                   const projectMilestones = milestones[project.id] || [];
@@ -189,33 +184,35 @@ export function ProjectSelectorModal({
                       <div
                         className={`
                           flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all
-                          ${isSelected 
-                            ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800' 
-                            : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-transparent'
+                          ${
+                            isSelected
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800'
+                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-transparent'
                           }
                         `}
                         onClick={() => handleProjectSelect(project)}
                       >
                         {/* Selection indicator */}
-                        <div className={`
+                        <div
+                          className={`
                           w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0
-                          ${isSelected 
-                            ? 'bg-blue-500 border-blue-500 text-white' 
-                            : 'border-zinc-300 dark:border-zinc-600'
+                          ${
+                            isSelected
+                              ? 'bg-blue-500 border-blue-500 text-white'
+                              : 'border-zinc-300 dark:border-zinc-600'
                           }
-                        `}>
+                        `}
+                        >
                           {isSelected && <Check className="w-3 h-3" />}
                         </div>
-                        
+
                         <Folder className="w-5 h-5 text-zinc-400 shrink-0" />
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm text-zinc-900 dark:text-white truncate">
                             {project.name}
                           </div>
-                          <div className="text-xs text-zinc-500 truncate">
-                            {project.path}
-                          </div>
+                          <div className="text-xs text-zinc-500 truncate">{project.path}</div>
                         </div>
 
                         {/* Show milestone indicator when selected */}
@@ -223,9 +220,10 @@ export function ProjectSelectorModal({
                           <div
                             className={`
                               flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium
-                              ${selectedProject?.milestoneName 
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                              ${
+                                selectedProject?.milestoneName
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
                               }
                             `}
                           >
@@ -243,28 +241,30 @@ export function ProjectSelectorModal({
                               <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
                             </div>
                           ) : projectMilestones.length === 0 ? (
-                            <div className="text-xs text-zinc-500 py-2 px-2">No active milestones</div>
+                            <div className="text-xs text-zinc-500 py-2 px-2">
+                              No active milestones
+                            </div>
                           ) : (
                             <div className="space-y-1">
                               <button
                                 onClick={() => handleMilestoneSelect(null)}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left ${
-                                !selectedProject?.milestoneId 
-                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700'
-                              }`}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left ${
+                                  !selectedProject?.milestoneId
+                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                                }`}
                               >
                                 No milestone
                               </button>
-                              {projectMilestones.map(milestone => (
+                              {projectMilestones.map((milestone) => (
                                 <button
                                   key={milestone.id}
                                   onClick={() => handleMilestoneSelect(milestone)}
-                                className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-sm text-left ${
-                                  selectedProject?.milestoneId === milestone.id 
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700'
-                                }`}
+                                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-sm text-left ${
+                                    selectedProject?.milestoneId === milestone.id
+                                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                                  }`}
                                 >
                                   <span className="truncate">{milestone.title}</span>
                                   {milestone.dueDate && (
@@ -289,7 +289,12 @@ export function ProjectSelectorModal({
           <div className="px-5 py-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
             <div className="text-sm text-zinc-500">
               {selectedProject ? (
-                <span>Creating in <span className="font-medium text-zinc-700 dark:text-zinc-300">{selectedProject.project.name}</span></span>
+                <span>
+                  Creating in{' '}
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                    {selectedProject.project.name}
+                  </span>
+                </span>
               ) : (
                 'Select a project'
               )}

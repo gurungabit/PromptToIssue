@@ -12,17 +12,17 @@ interface SharePageProps {
 export default async function SharePage({ params }: SharePageProps) {
   const { id } = await params;
   const session = await auth();
-  
+
   // Get share info
   const share = await db.getPublicShare(id);
   if (!share) {
     notFound();
   }
-  
+
   // Get chat and messages
   const chat = await db.getChat(share.chatId);
   const messages = await db.getChatMessages(share.chatId);
-  
+
   if (!chat) {
     notFound();
   }
@@ -41,7 +41,7 @@ export default async function SharePage({ params }: SharePageProps) {
           <span className="text-zinc-600">•</span>
           <span className="text-zinc-400 text-sm">Shared Chat</span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {session?.user ? (
             <ForkChatButton shareId={id} />
@@ -53,7 +53,7 @@ export default async function SharePage({ params }: SharePageProps) {
               Sign in to Fork
             </Link>
           )}
-          
+
           <Link
             href="/chat/new"
             className="px-4 py-2 text-sm font-medium text-zinc-900 bg-white rounded-lg hover:bg-zinc-200 transition-colors"
@@ -62,7 +62,7 @@ export default async function SharePage({ params }: SharePageProps) {
           </Link>
         </div>
       </header>
-      
+
       {/* Chat title */}
       <div className="max-w-3xl mx-auto px-4 py-6 border-b border-zinc-800">
         <h1 className="text-xl font-medium text-white">{chat.title}</h1>
@@ -70,7 +70,7 @@ export default async function SharePage({ params }: SharePageProps) {
           Shared on {new Date(share.createdAt || 0).toLocaleDateString()}
         </p>
       </div>
-      
+
       {/* Messages */}
       <div className="max-w-3xl mx-auto py-4">
         {messages.map((message) => (

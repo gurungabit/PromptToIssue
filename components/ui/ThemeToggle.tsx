@@ -12,7 +12,7 @@ export function ThemeToggle() {
       return { theme: 'system' as Theme, mounted: false };
     }
     const stored = localStorage.getItem('theme') as Theme | null;
-    return { theme: stored || 'system' as Theme, mounted: true };
+    return { theme: stored || ('system' as Theme), mounted: true };
   });
   const [theme, setTheme] = useState<Theme>(state.theme);
   const mounted = state.mounted || typeof window !== 'undefined';
@@ -38,7 +38,7 @@ export function ThemeToggle() {
     const themes: Theme[] = ['light', 'dark', 'system'];
     const currentIndex = themes.indexOf(theme);
     const nextTheme = themes[(currentIndex + 1) % themes.length];
-    
+
     setTheme(nextTheme);
     localStorage.setItem('theme', nextTheme);
     applyTheme(nextTheme);

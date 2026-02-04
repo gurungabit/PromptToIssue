@@ -18,25 +18,28 @@ interface MessageBubbleProps {
 }
 
 // Memoize to prevent unnecessary re-renders during streaming
-export const MessageBubble = memo(function MessageBubble({ 
+export const MessageBubble = memo(function MessageBubble({
   id,
   chatId,
-  role, 
-  content, 
+  role,
+  content,
   toolInvocations,
   isStreaming = false,
   isReadOnly = false,
   onTicketCreated,
-  onBulkTicketsCreated
+  onBulkTicketsCreated,
 }: MessageBubbleProps & { isReadOnly?: boolean }) {
   const isUser = role === 'user';
   const isAssistant = role === 'assistant';
 
   // Check if content looks like a JSON error - simpler detection
-  const looksLikeJsonError = content.includes('invalid_union') || 
+  const looksLikeJsonError =
+    content.includes('invalid_union') ||
     content.includes('invalid_type') ||
     content.includes('Invalid input') ||
-    (content.includes('"code"') && content.includes('"message"') && content.trim().charAt(0) === '[');
+    (content.includes('"code"') &&
+      content.includes('"message"') &&
+      content.trim().charAt(0) === '[');
 
   return (
     <div className={`group flex px-4 py-4 ${isUser ? 'justify-end' : ''}`}>
@@ -54,40 +57,41 @@ export const MessageBubble = memo(function MessageBubble({
         ) : looksLikeJsonError ? (
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl max-w-md">
             <p className="text-red-400 font-medium mb-2">⚠️ Error from AI Model</p>
-            <p className="text-red-400/80 text-sm mb-3">The model returned an invalid response. This can happen with free models.</p>
-            <p className="text-red-400/60 text-xs">Try switching to a different model like Gemini.</p>
+            <p className="text-red-400/80 text-sm mb-3">
+              The model returned an invalid response. This can happen with free models.
+            </p>
+            <p className="text-red-400/60 text-xs">
+              Try switching to a different model like Gemini.
+            </p>
           </div>
         ) : (
           <div className="text-zinc-800 dark:text-zinc-200 text-[15px] leading-relaxed">
             {toolInvocations && toolInvocations.length > 0 && (
               <div className="mb-4">
-                <ToolCallsDisplay toolCalls={toolInvocations.map(inv => ({
-                  name: inv.toolName,
-                  args: inv.args,
-                  result: 'result' in inv ? inv.result : undefined,
-                  status: inv.state === 'result' ? 'success' : (isStreaming ? 'pending' : 'incomplete'),
-                  error: undefined // 'error' in inv ? inv.error : undefined (ToolInvocation type varies)
-                }))} />
+                <ToolCallsDisplay
+                  toolCalls={toolInvocations.map((inv) => ({
+                    name: inv.toolName,
+                    args: inv.args,
+                    result: 'result' in inv ? inv.result : undefined,
+                    status:
+                      inv.state === 'result' ? 'success' : isStreaming ? 'pending' : 'incomplete',
+                    error: undefined, // 'error' in inv ? inv.error : undefined (ToolInvocation type varies)
+                  }))}
+                />
               </div>
             )}
-            <ArtifactRenderer 
-              content={content} 
+            <ArtifactRenderer
+              content={content}
               chatId={chatId}
               messageId={id}
               isReadOnly={isReadOnly}
-              onTicketCreated={onTicketCreated} 
-              onBulkTicketsCreated={onBulkTicketsCreated} 
+              onTicketCreated={onTicketCreated}
+              onBulkTicketsCreated={onBulkTicketsCreated}
             />
-            {isStreaming && (
-              <TypingIndicator />
-            )}
+            {isStreaming && <TypingIndicator />}
             {/* Action buttons for assistant messages */}
             {isAssistant && !isStreaming && content && (
-              <MessageActions 
-                messageId={id || ''} 
-                chatId={chatId || ''} 
-                content={content} 
-              />
+              <MessageActions messageId={id || ''} chatId={chatId || ''} content={content} />
             )}
           </div>
         )}
@@ -112,13 +116,25 @@ function CopyButton({ content }: { content: string }) {
       className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"
       title="Copy"
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-green-500 dark:text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? (
+        <Check className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />
+      ) : (
+        <Copy className="w-3.5 h-3.5" />
+      )}
     </button>
   );
 }
 
 // Message action buttons for assistant
-function MessageActions({ messageId, chatId, content }: { messageId: string; chatId: string; content: string }) {
+function MessageActions({
+  messageId,
+  chatId,
+  content,
+}: {
+  messageId: string;
+  chatId: string;
+  content: string;
+}) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'positive' | 'negative' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,9 +147,9 @@ function MessageActions({ messageId, chatId, content }: { messageId: string; cha
 
   async function handleFeedback(type: 'positive' | 'negative') {
     if (isSubmitting) return;
-    
+
     const newFeedback = feedback === type ? null : type;
-    
+
     setIsSubmitting(true);
     try {
       if (newFeedback && messageId && chatId) {
@@ -158,7 +174,11 @@ function MessageActions({ messageId, chatId, content }: { messageId: string; cha
         className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"
         title="Copy"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-green-500 dark:text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? (
+          <Check className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />
+        ) : (
+          <Copy className="w-3.5 h-3.5" />
+        )}
       </button>
 
       <button

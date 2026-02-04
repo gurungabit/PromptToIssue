@@ -1,6 +1,6 @@
 /**
  * AIDE Language Model
- * 
+ *
  * Implements the AI SDK LanguageModelV3 interface for the State Farm AIDE LLM API.
  * Supports both AWS Bedrock (Claude) and Azure OpenAI (GPT) models.
  */
@@ -51,16 +51,12 @@ export class AideLanguageModel implements LanguageModelV3 {
   readonly specificationVersion = 'v3' as const;
   readonly provider: string;
   readonly modelId: string;
-  
+
   private readonly config: AideLanguageModelConfig;
   private readonly modelInfo: AideModelInfo;
   private readonly settings: AideModelSettings;
 
-  constructor(
-    modelId: string,
-    settings: AideModelSettings,
-    config: AideLanguageModelConfig
-  ) {
+  constructor(modelId: string, settings: AideModelSettings, config: AideLanguageModelConfig) {
     this.modelId = modelId;
     this.settings = settings;
     this.config = config;
@@ -71,7 +67,7 @@ export class AideLanguageModel implements LanguageModelV3 {
     if (!modelInfo) {
       throw new Error(
         `Unknown AIDE model: ${modelId}. ` +
-        `Available models: ${Object.keys(AIDE_MODELS).join(', ')}`
+          `Available models: ${Object.keys(AIDE_MODELS).join(', ')}`,
       );
     }
     this.modelInfo = modelInfo;
@@ -89,7 +85,7 @@ export class AideLanguageModel implements LanguageModelV3 {
    */
   private async callAideApi(
     body: AideRequestBody,
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
   ): Promise<AideResponseBody> {
     const token = await this.config.getAuthToken();
 
@@ -97,8 +93,8 @@ export class AideLanguageModel implements LanguageModelV3 {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'UseCaseID': this.config.useCaseId,
-        'Authorization': `Bearer ${token}`,
+        UseCaseID: this.config.useCaseId,
+        Authorization: `Bearer ${token}`,
         ...this.config.headers,
       },
       body: JSON.stringify(body),
@@ -108,7 +104,7 @@ export class AideLanguageModel implements LanguageModelV3 {
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage = `AIDE API error: ${response.status} ${response.statusText}`;
-      
+
       try {
         const errorJson = JSON.parse(errorText);
         if (errorJson.error) {
@@ -264,13 +260,16 @@ export class AideLanguageModel implements LanguageModelV3 {
     const usage: LanguageModelV3Usage = {
       inputTokens: {
         total: response.usage.prompt_tokens,
-        noCache: response.usage.prompt_tokens - (response.usage.prompt_tokens_details?.cached_tokens ?? 0),
+        noCache:
+          response.usage.prompt_tokens - (response.usage.prompt_tokens_details?.cached_tokens ?? 0),
         cacheRead: response.usage.prompt_tokens_details?.cached_tokens,
         cacheWrite: undefined,
       },
       outputTokens: {
         total: response.usage.completion_tokens,
-        text: response.usage.completion_tokens - (response.usage.completion_tokens_details?.reasoning_tokens ?? 0),
+        text:
+          response.usage.completion_tokens -
+          (response.usage.completion_tokens_details?.reasoning_tokens ?? 0),
         reasoning: response.usage.completion_tokens_details?.reasoning_tokens,
       },
     };
@@ -323,7 +322,7 @@ export class AideLanguageModel implements LanguageModelV3 {
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
     // Filter tools to only function tools
     const functionTools = options.tools?.filter(
-      (tool): tool is LanguageModelV3FunctionTool => tool.type === 'function'
+      (tool): tool is LanguageModelV3FunctionTool => tool.type === 'function',
     );
 
     // Convert request to AIDE format
@@ -359,10 +358,10 @@ export class AideLanguageModel implements LanguageModelV3 {
         modelId: parsed.modelId,
         body: response,
       },
-      warnings: warnings.map(w => 
+      warnings: warnings.map((w) =>
         w.type === 'unsupported-setting'
           ? { type: 'unsupported' as const, feature: w.message }
-          : { type: 'other' as const, message: w.message }
+          : { type: 'other' as const, message: w.message },
       ),
     };
   }
@@ -374,7 +373,7 @@ export class AideLanguageModel implements LanguageModelV3 {
     try {
       // Filter tools to only function tools
       const functionTools = options.tools?.filter(
-        (tool): tool is LanguageModelV3FunctionTool => tool.type === 'function'
+        (tool): tool is LanguageModelV3FunctionTool => tool.type === 'function',
       );
 
       // Convert request to AIDE format
@@ -434,11 +433,11 @@ export class AideLanguageModel implements LanguageModelV3 {
 export function createAideLanguageModel(
   modelId: string,
   settings: AideModelSettings = {},
-  providerSettings: AideProviderSettings = {}
+  providerSettings: AideProviderSettings = {},
 ): AideLanguageModel {
   // Determine auth token getter
   let getAuthToken: () => Promise<string>;
-  
+
   if (providerSettings.getAuthToken) {
     getAuthToken = providerSettings.getAuthToken;
   } else if (providerSettings.azure) {

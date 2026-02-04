@@ -1,11 +1,15 @@
 /**
  * AIDE Stream Simulator
- * 
+ *
  * Simulates streaming responses from the AIDE API which only supports
  * non-streaming requests. Chunks text word-by-word for natural display.
  */
 
-import type { LanguageModelV3StreamPart, LanguageModelV3Usage, LanguageModelV3FinishReason } from '@ai-sdk/provider';
+import type {
+  LanguageModelV3StreamPart,
+  LanguageModelV3Usage,
+  LanguageModelV3FinishReason,
+} from '@ai-sdk/provider';
 
 export interface StreamSimulatorOptions {
   /** The full text response to stream */
@@ -52,7 +56,9 @@ function splitIntoWords(text: string): Array<{ word: string; whitespace: string 
 /**
  * Create a ReadableStream that simulates streaming the response word-by-word
  */
-export function createSimulatedStream(options: StreamSimulatorOptions): ReadableStream<LanguageModelV3StreamPart> {
+export function createSimulatedStream(
+  options: StreamSimulatorOptions,
+): ReadableStream<LanguageModelV3StreamPart> {
   const {
     text,
     textId,
@@ -67,7 +73,15 @@ export function createSimulatedStream(options: StreamSimulatorOptions): Readable
   const words = splitIntoWords(text);
   let wordIndex = 0;
   let toolCallIndex = 0;
-  let phase: 'start' | 'text-start' | 'text-delta' | 'text-end' | 'tools' | 'metadata' | 'finish' | 'done' = 'start';
+  let phase:
+    | 'start'
+    | 'text-start'
+    | 'text-delta'
+    | 'text-end'
+    | 'tools'
+    | 'metadata'
+    | 'finish'
+    | 'done' = 'start';
 
   return new ReadableStream<LanguageModelV3StreamPart>({
     pull(controller) {
@@ -75,7 +89,7 @@ export function createSimulatedStream(options: StreamSimulatorOptions): Readable
         case 'start': {
           // Emit stream-start with warnings
           // Map warnings to the correct SharedV3Warning format
-          const mappedWarnings = warnings.map(w => {
+          const mappedWarnings = warnings.map((w) => {
             if (w.type === 'unsupported-setting') {
               return { type: 'unsupported' as const, feature: w.message };
             }
@@ -85,7 +99,7 @@ export function createSimulatedStream(options: StreamSimulatorOptions): Readable
             type: 'stream-start',
             warnings: mappedWarnings,
           });
-          phase = text.length > 0 ? 'text-start' : (toolCalls.length > 0 ? 'tools' : 'metadata');
+          phase = text.length > 0 ? 'text-start' : toolCalls.length > 0 ? 'tools' : 'metadata';
           break;
         }
 
@@ -128,7 +142,7 @@ export function createSimulatedStream(options: StreamSimulatorOptions): Readable
         case 'tools': {
           if (toolCallIndex < toolCalls.length) {
             const tool = toolCalls[toolCallIndex];
-            
+
             // Emit tool-input-start
             controller.enqueue({
               type: 'tool-input-start',

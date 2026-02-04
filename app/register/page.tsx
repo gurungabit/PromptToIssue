@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -81,7 +81,10 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
+            >
               Name
             </label>
             <input
@@ -96,7 +99,10 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
+            >
               Email
             </label>
             <input
@@ -112,7 +118,10 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
+            >
               Password
             </label>
             <input
@@ -128,7 +137,10 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
+            >
               Confirm Password
             </label>
             <input
@@ -160,10 +172,7 @@ export default function RegisterPage() {
         {/* Login link */}
         <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 mt-6">
           Already have an account?{' '}
-          <Link
-            href="/login"
-            className="text-zinc-900 dark:text-white hover:underline font-medium"
-          >
+          <Link href="/login" className="text-zinc-900 dark:text-white hover:underline font-medium">
             Sign in
           </Link>
         </p>

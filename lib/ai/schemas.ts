@@ -34,7 +34,14 @@ export const taskSchema = z.object({
 
 // Enums for Ticket properties
 export const TicketPrioritySchema = z.enum(['low', 'medium', 'high', 'critical']);
-export const TicketTypeSchema = z.enum(['feature', 'bug', 'enhancement', 'documentation', 'refactor', 'testing']);
+export const TicketTypeSchema = z.enum([
+  'feature',
+  'bug',
+  'enhancement',
+  'documentation',
+  'refactor',
+  'testing',
+]);
 
 // Schema for a Ticket (Enhanced Issue)
 export const ticketSchema = z.object({
@@ -48,7 +55,7 @@ export const ticketSchema = z.object({
   priority: TicketPrioritySchema.default('medium'),
   type: TicketTypeSchema.default('feature'),
   estimatedHours: z.number().optional(),
-  
+
   // Keep original GitLab fields for backward compatibility/linking
   iid: z.number().optional(),
   state: z.enum(['opened', 'closed', 'all']).default('opened'),

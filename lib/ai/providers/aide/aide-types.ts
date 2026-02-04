@@ -1,6 +1,6 @@
 /**
  * AIDE LLM API Types
- * 
+ *
  * Type definitions for the State Farm AIDE LLM API
  * Supports both AWS Bedrock (Claude) and Azure OpenAI (GPT) models
  */

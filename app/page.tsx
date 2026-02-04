@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth/auth';
 
 export default async function HomePage() {
   const session = await auth();
-  
+
   if (session?.user) {
     redirect('/chat/new');
   } else {

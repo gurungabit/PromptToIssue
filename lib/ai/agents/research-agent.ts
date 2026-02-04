@@ -10,7 +10,6 @@ import {
   searchIssuesSchema,
   getFileContentSchema,
   listRepoFilesSchema,
-
 } from '@/lib/mcp/gitlab-tools';
 
 // File content and list repo files functions moved to gitlab-tools.ts
@@ -38,42 +37,41 @@ export interface ResearchResult {
 
 /**
  * Research Agent - A sub-agent that autonomously researches a GitLab project
- * 
+ *
  * This agent has its own context and makes tool calls independently to gather
  * comprehensive information about a project without overloading the main agent.
  */
 export async function researchProject(
   projectId: string | number,
   tokens: { accessToken: string; refreshToken?: string; userId?: string } | string,
-  modelId?: string
+  modelId?: string,
 ): Promise<ResearchResult> {
-  const tokenData = typeof tokens === 'string' 
-    ? { accessToken: tokens } 
-    : tokens;
-    
+  const tokenData = typeof tokens === 'string' ? { accessToken: tokens } : tokens;
+
   // Get the model for research (default to a capable model)
   const model = getModel(modelId || 'qwen3-8b');
-  
+
   // Create research-specific tools
   const researchTools = {
     get_project_details: tool({
-      description: 'Get detailed information about the project including metadata, stats, and activity',
+      description:
+        'Get detailed information about the project including metadata, stats, and activity',
       inputSchema: getProjectSchema,
       execute: async ({ projectId: pid }) => executeGetProject({ projectId: pid }, tokenData),
     }),
-    
+
     search_project_issues: tool({
       description: 'Search for issues in the project. Can filter by state (opened/closed/all)',
       inputSchema: searchIssuesSchema,
       execute: async (params) => executeSearchIssues(params, tokenData),
     }),
-    
+
     get_file_content: tool({
       description: 'Read a file from the repository (e.g., README.md, package.json, etc.)',
       inputSchema: getFileContentSchema,
       execute: async (params) => executeGetFileContent(params, tokenData),
     }),
-    
+
     list_repository_files: tool({
       description: 'List files and directories in the repository to understand project structure',
       inputSchema: listRepoFilesSchema,
@@ -116,7 +114,11 @@ After gathering information, provide a final summary in JSON format with these f
   // Extract data from tool results
   for (const step of result.steps) {
     for (const toolResult of step.toolResults) {
-      if (toolResult.toolName === 'get_project_details' && 'output' in toolResult && toolResult.output) {
+      if (
+        toolResult.toolName === 'get_project_details' &&
+        'output' in toolResult &&
+        toolResult.output
+      ) {
         const proj = toolResult.output as {
           name: string;
           path: string;
@@ -132,23 +134,39 @@ After gathering information, provide a final summary in JSON format with these f
           openIssuesCount: proj.openIssuesCount,
         };
       }
-      
-      if (toolResult.toolName === 'search_project_issues' && 'output' in toolResult && Array.isArray(toolResult.output)) {
-        issues = (toolResult.output as Array<{
-          iid: number;
-          title: string;
-          state: string;
-          labels: string[];
-        }>).slice(0, 10).map(i => ({
-          iid: i.iid,
-          title: i.title,
-          state: i.state,
-          labels: i.labels,
-        }));
+
+      if (
+        toolResult.toolName === 'search_project_issues' &&
+        'output' in toolResult &&
+        Array.isArray(toolResult.output)
+      ) {
+        issues = (
+          toolResult.output as Array<{
+            iid: number;
+            title: string;
+            state: string;
+            labels: string[];
+          }>
+        )
+          .slice(0, 10)
+          .map((i) => ({
+            iid: i.iid,
+            title: i.title,
+            state: i.state,
+            labels: i.labels,
+          }));
       }
-      
-      if (toolResult.toolName === 'get_file_content' && 'output' in toolResult && toolResult.output) {
-        const fileResult = toolResult.output as { content?: string; fileName?: string; error?: string };
+
+      if (
+        toolResult.toolName === 'get_file_content' &&
+        'output' in toolResult &&
+        toolResult.output
+      ) {
+        const fileResult = toolResult.output as {
+          content?: string;
+          fileName?: string;
+          error?: string;
+        };
         if (fileResult.content && fileResult.fileName?.toLowerCase().includes('readme')) {
           // Truncate README to avoid huge responses
           readme = fileResult.content.slice(0, 2000);
@@ -157,11 +175,15 @@ After gathering information, provide a final summary in JSON format with these f
           }
         }
       }
-      
-      if (toolResult.toolName === 'list_repository_files' && 'output' in toolResult && Array.isArray(toolResult.output)) {
+
+      if (
+        toolResult.toolName === 'list_repository_files' &&
+        'output' in toolResult &&
+        Array.isArray(toolResult.output)
+      ) {
         filesOverview = (toolResult.output as Array<{ path: string; type: string }>)
           .slice(0, 20)
-          .map(f => `${f.type === 'tree' ? '📁' : '📄'} ${f.path}`);
+          .map((f) => `${f.type === 'tree' ? '📁' : '📄'} ${f.path}`);
       }
     }
   }
@@ -177,11 +199,15 @@ After gathering information, provide a final summary in JSON format with these f
       researchNotes = parsed.researchNotes || '';
     } else {
       // Use the raw text as notes
-      summary = projectInfo?.name ? `Research completed for ${projectInfo.name}` : 'Research completed';
+      summary = projectInfo?.name
+        ? `Research completed for ${projectInfo.name}`
+        : 'Research completed';
       researchNotes = text;
     }
   } catch {
-    summary = projectInfo?.name ? `Research completed for ${projectInfo.name}` : 'Research completed';
+    summary = projectInfo?.name
+      ? `Research completed for ${projectInfo.name}`
+      : 'Research completed';
     researchNotes = text;
   }
 

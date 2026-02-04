@@ -59,7 +59,7 @@ export async function initializeDatabase(): Promise<void> {
         ReadCapacityUnits: 5,
         WriteCapacityUnits: 5,
       },
-    })
+    }),
   );
 
   console.log(`Table "${TABLE_NAME}" created successfully`);

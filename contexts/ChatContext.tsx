@@ -6,11 +6,11 @@ interface ChatContextValue {
   // Current chat state
   currentChatId: string | undefined;
   setCurrentChatId: (id: string | undefined) => void;
-  
+
   // Callbacks for sidebar
   onChatCreated: () => void;
   registerChatCreatedCallback: (callback: () => void) => void;
-  
+
   // Reset for new chat
   resetChat: () => void;
   onResetChat: () => void;
@@ -27,7 +27,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>();
   const [chatCreatedCallback, setChatCreatedCallback] = useState<(() => void) | null>(null);
   const [resetCallback, setResetCallback] = useState<(() => void) | null>(null);
-  
+
   // Initialize from localStorage if available, default to true
   const [mcpEnabled, setMcpEnabledState] = useState(true);
 
@@ -68,17 +68,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [onResetChat]);
 
   return (
-    <ChatContext.Provider value={{
-      currentChatId,
-      setCurrentChatId,
-      onChatCreated,
-      registerChatCreatedCallback,
-      resetChat,
-      onResetChat,
-      registerResetCallback,
-      mcpEnabled,
-      setMcpEnabled,
-    }}>
+    <ChatContext.Provider
+      value={{
+        currentChatId,
+        setCurrentChatId,
+        onChatCreated,
+        registerChatCreatedCallback,
+        resetChat,
+        onResetChat,
+        registerResetCallback,
+        mcpEnabled,
+        setMcpEnabled,
+      }}
+    >
       {children}
     </ChatContext.Provider>
   );

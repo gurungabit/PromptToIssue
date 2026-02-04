@@ -27,7 +27,7 @@ interface ToolPart {
 function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
   if (!parts || !Array.isArray(parts)) return [];
   const toolInvocations: ToolInvocation[] = [];
-  
+
   for (const part of parts) {
     if (
       typeof part === 'object' &&
@@ -39,7 +39,7 @@ function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
     ) {
       const tp = part as ToolPart;
       const toolName = tp.type.replace(/^tool-/, ''); // Extract tool name from "tool-list_projects" -> "list_projects"
-      
+
       // Map AI SDK state to our ToolInvocation state
       let state: 'call' | 'partial-call' | 'result' = 'call';
       if (tp.state === 'output-available' || tp.state === 'output-streaming') {
@@ -47,7 +47,7 @@ function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
       } else if (tp.state === 'input-streaming') {
         state = 'partial-call';
       }
-      
+
       toolInvocations.push({
         toolCallId: tp.toolCallId,
         toolName: toolName,
@@ -57,7 +57,7 @@ function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
       });
     }
   }
-  
+
   return toolInvocations;
 }
 
@@ -73,7 +73,11 @@ const EXAMPLE_PROMPTS = [
   'Summarize the current milestone status and list blockers',
 ];
 
-function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { transport: DefaultChatTransport<UIMessage> }) {
+function ChatInner({
+  chatId,
+  initialMessages = [],
+  transport,
+}: ChatProps & { transport: DefaultChatTransport<UIMessage> }) {
   const [modelId, setModelId] = useState('qwen3-8b');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [localMessages] = useState(initialMessages);
@@ -81,21 +85,16 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
-  
+
   const [dismissedError, setDismissedError] = useState<Error | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
   const prevMessageCountRef = useRef(0);
   const hasScrolledToNewMessageRef = useRef(true);
-  
+
   // Use React Context for chat state management
-  const { 
-    currentChatId, 
-    setCurrentChatId, 
-    registerResetCallback,
-    mcpEnabled
-  } = useChatContext();
+  const { currentChatId, setCurrentChatId, registerResetCallback, mcpEnabled } = useChatContext();
 
   // Initialize currentChatId from prop
   useEffect(() => {
@@ -131,7 +130,7 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId: currentChatId }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const url = `${window.location.origin}${data.shareUrl}`;
@@ -147,130 +146,141 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
   }
 
   // Callback when a ticket is created from the widget
-  const handleTicketCreated = useCallback(async (ticketUrl: string, ticketTitle: string) => {
-    console.log('[Chat] handleTicketCreated called:', { ticketUrl, ticketTitle, currentChatId });
-    
-    // Create the message content
-    const messageContent = `✅ **Ticket Created Successfully!**\n\n**${ticketTitle}**\n\n[View ticket on GitLab](${ticketUrl})`;
-    
-    // Build the new message with the structure expected by getMessageContent
-    const createTicketMessage = (id: string) => ({
-      id,
-      role: 'assistant' as const,
-      parts: [{ type: 'text' as const, text: messageContent }],
-    });
-    
-    // Save to database if we have a chat ID
-    if (currentChatId) {
-      console.log('[Chat] Saving message to database for chat:', currentChatId);
-      try {
-        const response = await fetch(`/api/chats/${currentChatId}/messages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            role: 'assistant',
-            content: messageContent,
-          }),
-        });
-        
-        console.log('[Chat] API response status:', response.status);
-        
-        if (response.ok) {
-          const savedMessage = await response.json();
-          console.log('[Chat] Message saved, updating state with id:', savedMessage.id);
-          setMessages(prev => {
-            if (prev.length === 0 && localMessages.length > 0) {
-               return [...localMessages, createTicketMessage(savedMessage.id)] as typeof prev;
-            }
-            return [...prev, createTicketMessage(savedMessage.id)] as typeof prev;
-          });
-        } else {
-          console.error('[Chat] API response not OK:', await response.text());
-        }
-      } catch (error) {
-        console.error('[Chat] Failed to save ticket message:', error);
-      }
-    } else {
-      // No chat ID yet, just update local state
-      console.log('[Chat] No chat ID, updating local state only');
-      setMessages(prev => {
-        if (prev.length === 0 && localMessages.length > 0) {
-           return [...localMessages, createTicketMessage(`ticket-created-${Date.now()}`)] as typeof prev;
-        }
-        return [...prev, createTicketMessage(`ticket-created-${Date.now()}`)] as typeof prev;
+  const handleTicketCreated = useCallback(
+    async (ticketUrl: string, ticketTitle: string) => {
+      console.log('[Chat] handleTicketCreated called:', { ticketUrl, ticketTitle, currentChatId });
+
+      // Create the message content
+      const messageContent = `✅ **Ticket Created Successfully!**\n\n**${ticketTitle}**\n\n[View ticket on GitLab](${ticketUrl})`;
+
+      // Build the new message with the structure expected by getMessageContent
+      const createTicketMessage = (id: string) => ({
+        id,
+        role: 'assistant' as const,
+        parts: [{ type: 'text' as const, text: messageContent }],
       });
-    }
-  }, [currentChatId, setMessages, localMessages]);
+
+      // Save to database if we have a chat ID
+      if (currentChatId) {
+        console.log('[Chat] Saving message to database for chat:', currentChatId);
+        try {
+          const response = await fetch(`/api/chats/${currentChatId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              role: 'assistant',
+              content: messageContent,
+            }),
+          });
+
+          console.log('[Chat] API response status:', response.status);
+
+          if (response.ok) {
+            const savedMessage = await response.json();
+            console.log('[Chat] Message saved, updating state with id:', savedMessage.id);
+            setMessages((prev) => {
+              if (prev.length === 0 && localMessages.length > 0) {
+                return [...localMessages, createTicketMessage(savedMessage.id)] as typeof prev;
+              }
+              return [...prev, createTicketMessage(savedMessage.id)] as typeof prev;
+            });
+          } else {
+            console.error('[Chat] API response not OK:', await response.text());
+          }
+        } catch (error) {
+          console.error('[Chat] Failed to save ticket message:', error);
+        }
+      } else {
+        // No chat ID yet, just update local state
+        console.log('[Chat] No chat ID, updating local state only');
+        setMessages((prev) => {
+          if (prev.length === 0 && localMessages.length > 0) {
+            return [
+              ...localMessages,
+              createTicketMessage(`ticket-created-${Date.now()}`),
+            ] as typeof prev;
+          }
+          return [...prev, createTicketMessage(`ticket-created-${Date.now()}`)] as typeof prev;
+        });
+      }
+    },
+    [currentChatId, setMessages, localMessages],
+  );
 
   // Callback when bulk tickets are created
-  const handleBulkTicketsCreated = useCallback(async (results: { ticket: string; webUrl?: string }[]) => {
-    console.log('[Chat] handleBulkTicketsCreated called with', results.length, 'results');
-    const successfulTickets = results.filter(r => r.webUrl);
-    if (successfulTickets.length === 0) {
-      console.log('[Chat] No successful tickets to report');
-      return;
-    }
-    
-    // Create message content with all ticket links
-    const ticketLinks = successfulTickets
-      .map(t => `- [${t.ticket}](${t.webUrl})`)
-      .join('\n');
-    const messageContent = `✅ **${successfulTickets.length} Ticket${successfulTickets.length > 1 ? 's' : ''} Created Successfully!**\n\n${ticketLinks}`;
-    
-    const createBulkMessage = (id: string) => ({
-      id,
-      role: 'assistant' as const,
-      parts: [{ type: 'text' as const, text: messageContent }],
-    });
-    
-    if (currentChatId) {
-      console.log('[Chat] Saving bulk message to chat:', currentChatId);
-      try {
-        const response = await fetch(`/api/chats/${currentChatId}/messages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            role: 'assistant',
-            content: messageContent,
-          }),
-        });
-        
-        if (response.ok) {
-          const savedMessage = await response.json();
-          console.log('[Chat] Bulk message saved, updating state with ID:', savedMessage.id);
-          // Use functional update to avoid stale closure
-          setMessages(prev => {
-            if (prev.length === 0 && localMessages.length > 0) {
-              console.log('[Chat] Merging local messages into empty useChat state');
-              return [...localMessages, createBulkMessage(savedMessage.id)] as typeof prev;
-            }
-            return [...prev, createBulkMessage(savedMessage.id)] as typeof prev;
-          });
-        } else {
-          console.error('[Chat] Failed to save bulk message:', await response.text());
-        }
-      } catch (error) {
-        console.error('[Chat] Failed to save bulk ticket message:', error);
+  const handleBulkTicketsCreated = useCallback(
+    async (results: { ticket: string; webUrl?: string }[]) => {
+      console.log('[Chat] handleBulkTicketsCreated called with', results.length, 'results');
+      const successfulTickets = results.filter((r) => r.webUrl);
+      if (successfulTickets.length === 0) {
+        console.log('[Chat] No successful tickets to report');
+        return;
       }
-    } else {
-      console.log('[Chat] No chat ID, updating local state only');
-      // Use functional update to avoid stale closure
-      setMessages(prev => {
-        if (prev.length === 0 && localMessages.length > 0) {
-           return [...localMessages, createBulkMessage(`bulk-tickets-${Date.now()}`)] as typeof prev;
-        }
-        return [...prev, createBulkMessage(`bulk-tickets-${Date.now()}`)] as typeof prev;
+
+      // Create message content with all ticket links
+      const ticketLinks = successfulTickets.map((t) => `- [${t.ticket}](${t.webUrl})`).join('\n');
+      const messageContent = `✅ **${successfulTickets.length} Ticket${successfulTickets.length > 1 ? 's' : ''} Created Successfully!**\n\n${ticketLinks}`;
+
+      const createBulkMessage = (id: string) => ({
+        id,
+        role: 'assistant' as const,
+        parts: [{ type: 'text' as const, text: messageContent }],
       });
-    }
-  }, [currentChatId, setMessages, localMessages]);
+
+      if (currentChatId) {
+        console.log('[Chat] Saving bulk message to chat:', currentChatId);
+        try {
+          const response = await fetch(`/api/chats/${currentChatId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              role: 'assistant',
+              content: messageContent,
+            }),
+          });
+
+          if (response.ok) {
+            const savedMessage = await response.json();
+            console.log('[Chat] Bulk message saved, updating state with ID:', savedMessage.id);
+            // Use functional update to avoid stale closure
+            setMessages((prev) => {
+              if (prev.length === 0 && localMessages.length > 0) {
+                console.log('[Chat] Merging local messages into empty useChat state');
+                return [...localMessages, createBulkMessage(savedMessage.id)] as typeof prev;
+              }
+              return [...prev, createBulkMessage(savedMessage.id)] as typeof prev;
+            });
+          } else {
+            console.error('[Chat] Failed to save bulk message:', await response.text());
+          }
+        } catch (error) {
+          console.error('[Chat] Failed to save bulk ticket message:', error);
+        }
+      } else {
+        console.log('[Chat] No chat ID, updating local state only');
+        // Use functional update to avoid stale closure
+        setMessages((prev) => {
+          if (prev.length === 0 && localMessages.length > 0) {
+            return [
+              ...localMessages,
+              createBulkMessage(`bulk-tickets-${Date.now()}`),
+            ] as typeof prev;
+          }
+          return [...prev, createBulkMessage(`bulk-tickets-${Date.now()}`)] as typeof prev;
+        });
+      }
+    },
+    [currentChatId, setMessages, localMessages],
+  );
 
   // Check if user has scrolled away from bottom
   const checkScrollPosition = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    
+
     const threshold = 100; // pixels from bottom to consider "at bottom"
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     setShowScrollButton(!isNearBottom && hasMessages);
   }, [hasMessages]);
 
@@ -278,20 +288,20 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    
+
     container.addEventListener('scroll', checkScrollPosition);
-    
+
     // Watch the content inside the container (first child) for size changes during streaming
     const resizeObserver = new ResizeObserver(() => {
       checkScrollPosition();
     });
-    
+
     // Observe all children of the container to catch content growth
     const children = container.children;
     for (let i = 0; i < children.length; i++) {
       resizeObserver.observe(children[i]);
     }
-    
+
     return () => {
       container.removeEventListener('scroll', checkScrollPosition);
       resizeObserver.disconnect();
@@ -302,7 +312,7 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
   useEffect(() => {
     const currentCount = allMessages.length;
     const prevCount = prevMessageCountRef.current;
-    
+
     // New message added - scroll to its start
     if (currentCount > prevCount && currentCount > 0) {
       hasScrolledToNewMessageRef.current = false;
@@ -314,7 +324,7 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
         }
       });
     }
-    
+
     prevMessageCountRef.current = currentCount;
   }, [allMessages.length]);
 
@@ -334,7 +344,7 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
           chatId: currentChatId,
           mcpEnabled,
         },
-      }
+      },
     );
   }
 
@@ -342,11 +352,14 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
     setModelId(newModelId);
   }
 
-  function getMessageContent(message: { parts?: Array<{ type: string; text?: string }>; content?: string }): string {
+  function getMessageContent(message: {
+    parts?: Array<{ type: string; text?: string }>;
+    content?: string;
+  }): string {
     if (message.parts) {
       return message.parts
-        .filter(part => part.type === 'text' && part.text)
-        .map(part => part.text!)
+        .filter((part) => part.type === 'text' && part.text)
+        .map((part) => part.text!)
         .join('');
     }
     return message.content || '';
@@ -356,22 +369,24 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
 
   return (
     <div className={`flex-1 flex flex-col h-screen ${isDark ? 'bg-zinc-950' : 'bg-zinc-50'}`}>
-      <header className={`h-14 border-b flex items-center justify-between px-4 shrink-0 ${
-        isDark ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-white'
-      }`}>
+      <header
+        className={`h-14 border-b flex items-center justify-between px-4 shrink-0 ${
+          isDark ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-white'
+        }`}
+      >
         <h1 className={`font-medium ${isDark ? 'text-white' : 'text-zinc-900'}`}>
           {hasMessages ? 'Chat' : 'Prompt2Issue'}
         </h1>
         <div className="flex items-center gap-2">
           {hasMessages && (
-            <button 
+            <button
               onClick={handleShare}
               disabled={isSharing}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                showCopied 
-                  ? 'bg-green-100 text-green-700 border-green-200' 
-                  : isDark 
-                    ? 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-white' 
+                showCopied
+                  ? 'bg-green-100 text-green-700 border-green-200'
+                  : isDark
+                    ? 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-white'
                     : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900'
               }`}
             >
@@ -388,11 +403,11 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
               )}
             </button>
           )}
-          <button 
+          <button
             onClick={() => setSettingsOpen(true)}
             className={`p-2 rounded-lg transition-colors ${
-              isDark 
-                ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' 
+              isDark
+                ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                 : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
             }`}
           >
@@ -403,35 +418,41 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
 
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 relative scroll-smooth">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto min-h-0 relative scroll-smooth"
+      >
         {!hasMessages ? (
           <div className="h-full flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-            
             {/* Centered Empty State */}
-            <div className={`mb-8 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 slide-in-from-bottom-4`}>
-                <h1 className={`text-4xl font-bold mb-4 tracking-tight text-center ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-                   What can I help you build?
-                </h1>
+            <div
+              className={`mb-8 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 slide-in-from-bottom-4`}
+            >
+              <h1
+                className={`text-4xl font-bold mb-4 tracking-tight text-center ${isDark ? 'text-white' : 'text-zinc-900'}`}
+              >
+                What can I help you build?
+              </h1>
             </div>
 
             <div className="w-full animate-in fade-in zoom-in-95 duration-500 delay-100 slide-in-from-bottom-6">
-                <ChatInput
-                   onSend={handleSend}
-                   disabled={isLoading}
-                   modelId={modelId}
-                   onModelChange={handleModelChange}
-                   centered={true}
-                />
+              <ChatInput
+                onSend={handleSend}
+                disabled={isLoading}
+                modelId={modelId}
+                onModelChange={handleModelChange}
+                centered={true}
+              />
             </div>
-            
+
             <div className="mt-8 grid grid-cols-2 gap-2 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-200 slide-in-from-bottom-8">
               {EXAMPLE_PROMPTS.slice(0, 4).map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => handleSend(prompt)}
                   className={`text-sm text-left px-4 py-3 rounded-xl transition-all ${
-                    isDark 
-                      ? 'bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200' 
+                    isDark
+                      ? 'bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200'
                       : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900'
                   }`}
                 >
@@ -442,59 +463,99 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
 
             {/* User Guide & Privacy Notice */}
             <div className="mt-12 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-300 slide-in-from-bottom-10 space-y-8">
-              
               {/* Usage Guide */}
               <div>
-                <h3 className={`text-sm font-semibold mb-3 uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>How it works</h3>
+                <h3
+                  className={`text-sm font-semibold mb-3 uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}
+                >
+                  How it works
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}>
-                    <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mb-3 font-bold text-sm">1</div>
-                    <h4 className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Connect GitLab</h4>
-                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>Link your account in Settings to access projects.</p>
+                  <div
+                    className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mb-3 font-bold text-sm">
+                      1
+                    </div>
+                    <h4
+                      className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}
+                    >
+                      Connect GitLab
+                    </h4>
+                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                      Link your account in Settings to access projects.
+                    </p>
                   </div>
-                  <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}>
-                    <div className="w-8 h-8 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center mb-3 font-bold text-sm">2</div>
-                    <h4 className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Ask Questions</h4>
-                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>Chat about your codebase or plan new features.</p>
+                  <div
+                    className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center mb-3 font-bold text-sm">
+                      2
+                    </div>
+                    <h4
+                      className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}
+                    >
+                      Ask Questions
+                    </h4>
+                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                      Chat about your codebase or plan new features.
+                    </p>
                   </div>
-                  <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}>
-                    <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-3 font-bold text-sm">3</div>
-                    <h4 className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Create Tickets</h4>
-                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>Turn conversations into issues with one click.</p>
+                  <div
+                    className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-3 font-bold text-sm">
+                      3
+                    </div>
+                    <h4
+                      className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}
+                    >
+                      Create Tickets
+                    </h4>
+                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                      Turn conversations into issues with one click.
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Privacy Notice */}
-              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-orange-900/10 border-orange-900/30' : 'bg-orange-50/50 border-orange-200/50'}`}>
-                <h3 className={`text-sm font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
-                   Security & Privacy Notice
+              <div
+                className={`p-4 rounded-2xl border ${isDark ? 'bg-orange-900/10 border-orange-900/30' : 'bg-orange-50/50 border-orange-200/50'}`}
+              >
+                <h3
+                  className={`text-sm font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}
+                >
+                  Security & Privacy Notice
                 </h3>
-                <div className={`text-xs leading-relaxed space-y-2 ${isDark ? 'text-orange-300' : 'text-orange-600'}`}>
-                   <p>Please observe all AI Assistant Expectations. Do not include:</p>
-                   <ul className="list-disc pl-4 space-y-0.5 opacity-90">
-                      <li>Personal identifiers (customer name, claim#, policy#, contact info)</li>
-                      <li>SSN, TIN, SIN, driver&apos;s license numbers</li>
-                      <li>Financial account numbers, credit/debit card numbers</li>
-                      <li>PHI, medical information</li>
-                      <li>Usernames, passwords, or access keys</li>
-                   </ul>
+                <div
+                  className={`text-xs leading-relaxed space-y-2 ${isDark ? 'text-orange-300' : 'text-orange-600'}`}
+                >
+                  <p>Please observe all AI Assistant Expectations. Do not include:</p>
+                  <ul className="list-disc pl-4 space-y-0.5 opacity-90">
+                    <li>Personal identifiers (customer name, claim#, policy#, contact info)</li>
+                    <li>SSN, TIN, SIN, driver&apos;s license numbers</li>
+                    <li>Financial account numbers, credit/debit card numbers</li>
+                    <li>PHI, medical information</li>
+                    <li>Usernames, passwords, or access keys</li>
+                  </ul>
                 </div>
               </div>
-
             </div>
-
           </div>
         ) : (
           <div className="max-w-3xl mx-auto py-8 px-4">
             {allMessages.map((message, index) => {
               // Extract tool invocations from parts (AI SDK v6 format)
               // Prefer existing toolInvocations if available (from ChatPage hydration)
-              const existingTools = (message as unknown as { toolInvocations?: ToolInvocation[] }).toolInvocations;
+              const existingTools = (message as unknown as { toolInvocations?: ToolInvocation[] })
+                .toolInvocations;
               const calculatedTools = getToolInvocationsFromParts(
-                (message as unknown as { parts?: Array<{ type: string; [key: string]: unknown }> }).parts
+                (message as unknown as { parts?: Array<{ type: string; [key: string]: unknown }> })
+                  .parts,
               );
-              const toolInvocations = (existingTools && existingTools.length > 0) ? existingTools : calculatedTools;
+              const toolInvocations =
+                existingTools && existingTools.length > 0 ? existingTools : calculatedTools;
               const isLastMessage = index === allMessages.length - 1;
               return (
                 <div key={message.id} ref={isLastMessage ? lastMessageRef : undefined}>
@@ -517,15 +578,15 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
             <div ref={messagesEndRef} className="h-4" />
           </div>
         )}
-        
+
         {/* Scroll to bottom button - sticky inside scroll container */}
         {showScrollButton && (
           <div className="sticky bottom-4 flex justify-center pointer-events-none z-10">
             <button
               onClick={scrollToBottom}
               className={`pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full shadow-lg transition-all hover:scale-105 ${
-                isDark 
-                  ? 'bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700' 
+                isDark
+                  ? 'bg-zinc-800 text-white border border-zinc-700 hover:bg-zinc-700'
                   : 'bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50'
               }`}
             >
@@ -541,10 +602,12 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div className="flex-1 text-red-400 text-sm leading-relaxed">
               <p className="font-medium mb-1">Error Generating Response</p>
-              <p className="text-red-400/80">{error.message || 'An error occurred. Please try again.'}</p>
+              <p className="text-red-400/80">
+                {error.message || 'An error occurred. Please try again.'}
+              </p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <button 
+              <button
                 onClick={() => setDismissedError(error)}
                 className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                 title="Dismiss"
@@ -574,30 +637,34 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
 export function Chat(props: ChatProps) {
   const [transport, setTransport] = useState<DefaultChatTransport<UIMessage> | null>(null);
   const { currentChatId, setCurrentChatId, onChatCreated } = useChatContext();
-  
+
   // Refs for transport closure
   const currentChatIdRef = useRef(currentChatId);
   const onChatCreatedRef = useRef(onChatCreated);
-  
-  useEffect(() => { currentChatIdRef.current = currentChatId; }, [currentChatId]);
-  useEffect(() => { onChatCreatedRef.current = onChatCreated; }, [onChatCreated]);
-  
+
+  useEffect(() => {
+    currentChatIdRef.current = currentChatId;
+  }, [currentChatId]);
+  useEffect(() => {
+    onChatCreatedRef.current = onChatCreated;
+  }, [onChatCreated]);
+
   useEffect(() => {
     const t = new DefaultChatTransport({
       api: '/api/chat',
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
         const response = await globalThis.fetch(input, init);
-        
+
         // Capture chat ID from response header for new chats
         const newChatId = response.headers.get('X-Chat-Id');
         if (newChatId && !currentChatIdRef.current) {
           setCurrentChatId(newChatId);
           window.history.replaceState(null, '', `/chat/${newChatId}`);
           if (onChatCreatedRef.current) {
-             onChatCreatedRef.current();
+            onChatCreatedRef.current();
           }
         }
-        
+
         return response;
       },
     });

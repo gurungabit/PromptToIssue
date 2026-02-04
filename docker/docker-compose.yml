@@ -3,9 +3,9 @@ services:
     image: amazon/dynamodb-local:latest
     container_name: dynamodb-local
     ports:
-      - "8000:8000"
+      - '8000:8000'
     # Use in-memory mode for simpler development (data doesn't persist across restarts)
-    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    command: '-jar DynamoDBLocal.jar -sharedDb -inMemory'
     # For persistent storage, use this instead (requires proper volume permissions):
     # volumes:
     #   - dynamodb-data:/home/dynamodblocal/data

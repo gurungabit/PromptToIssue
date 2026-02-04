@@ -1,6 +1,6 @@
 /**
  * AIDE Provider
- * 
+ *
  * Factory function for creating AIDE provider instances
  * Compatible with the AI SDK provider pattern
  */
@@ -56,7 +56,7 @@ export type AideModelId = keyof typeof AIDE_MODELS;
 
 /**
  * Create an AIDE provider instance with custom configuration
- * 
+ *
  * @example
  * ```typescript
  * const myAide = createAide({
@@ -64,16 +64,22 @@ export type AideModelId = keyof typeof AIDE_MODELS;
  *   useCaseId: 'RITM1234567',
  *   solmaId: '123456',
  * });
- * 
+ *
  * const model = myAide('claude-sonnet-4.5');
  * ```
  */
 export function createAide(options: AideProviderSettings = {}): AideProvider {
-  const createModel = (modelId: AideModelId | string, settings: AideModelSettings = {}): AideLanguageModel => {
+  const createModel = (
+    modelId: AideModelId | string,
+    settings: AideModelSettings = {},
+  ): AideLanguageModel => {
     return createAideLanguageModel(modelId, settings, options);
   };
 
-  const provider = function (modelId: AideModelId | string, settings?: AideModelSettings): AideLanguageModel {
+  const provider = function (
+    modelId: AideModelId | string,
+    settings?: AideModelSettings,
+  ): AideLanguageModel {
     if (new.target) {
       throw new Error('The AIDE model factory function cannot be called with the new keyword.');
     }
@@ -109,7 +115,7 @@ export function createAide(options: AideProviderSettings = {}): AideProvider {
 
 /**
  * Default AIDE provider instance using environment variables
- * 
+ *
  * Required environment variables:
  * - AIDE_BASE_URL: Base URL for the AIDE API
  * - AIDE_USE_CASE_ID: Your AIDE use case ID (RITM* or BUSN*)
@@ -118,13 +124,13 @@ export function createAide(options: AideProviderSettings = {}): AideProvider {
  * - AIDE_AZURE_CLIENT_ID: Azure AD client ID
  * - AIDE_AZURE_CLIENT_SECRET: Azure AD client secret
  * - AIDE_AZURE_SCOPE: Azure AD scope
- * 
+ *
  * @example
  * ```typescript
  * import { aide } from '@/lib/ai/providers/aide';
- * 
+ *
  * const model = aide('claude-sonnet-4.5');
- * 
+ *
  * const result = await generateText({
  *   model,
  *   prompt: 'Hello, world!',

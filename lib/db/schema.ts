@@ -75,7 +75,10 @@ export const ChatSchema = z.object({
 });
 
 export type Chat = z.infer<typeof ChatSchema>;
-export type ChatInput = Omit<Chat, 'PK' | 'SK' | 'GSI1PK' | 'GSI1SK' | 'createdAt' | 'updatedAt' | 'isPublic' | 'shareId'>;
+export type ChatInput = Omit<
+  Chat,
+  'PK' | 'SK' | 'GSI1PK' | 'GSI1SK' | 'createdAt' | 'updatedAt' | 'isPublic' | 'shareId'
+>;
 
 // Message Part schemas for tool calls
 export const TextPartSchema = z.object({

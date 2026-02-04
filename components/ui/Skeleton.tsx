@@ -1,9 +1,5 @@
 export function Skeleton({ className = '' }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse bg-surface-hover rounded-[var(--radius)] ${className}`}
-    />
-  );
+  return <div className={`animate-pulse bg-surface-hover rounded-[var(--radius)] ${className}`} />;
 }
 
 export function MessageSkeleton() {

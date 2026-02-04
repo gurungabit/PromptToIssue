@@ -18,23 +18,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         const parsed = credentialsSchema.safeParse(credentials);
-        
+
         if (!parsed.success) {
           return null;
         }
-        
+
         const user = await db.getUserByEmail(parsed.data.email);
-        
+
         if (!user) {
           return null;
         }
-        
+
         const isValid = await verifyPassword(parsed.data.password, user.hashedPassword);
-        
+
         if (!isValid) {
           return null;
         }
-        
+
         return {
           id: user.id,
           email: user.email,
@@ -74,7 +74,7 @@ declare module 'next-auth' {
       name?: string | null;
     };
   }
-  
+
   interface User {
     id: string;
     email: string;

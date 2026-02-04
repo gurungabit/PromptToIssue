@@ -3,11 +3,7 @@
 import { useState } from 'react';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 
-export default function ChatLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (

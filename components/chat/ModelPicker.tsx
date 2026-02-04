@@ -23,7 +23,7 @@ export function ModelPicker({ currentModel, onSelect, onClose }: ModelPickerProp
   const filteredModels = models.filter(
     (model) =>
       model.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      model.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      model.description?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -85,7 +85,9 @@ export function ModelPicker({ currentModel, onSelect, onClose }: ModelPickerProp
                       </div>
                     )}
 
-                    <div className={`w-10 h-10 ${providerColor} rounded-lg flex items-center justify-center text-white font-bold text-lg mb-3`}>
+                    <div
+                      className={`w-10 h-10 ${providerColor} rounded-lg flex items-center justify-center text-white font-bold text-lg mb-3`}
+                    >
                       {model.provider === 'google' ? '✦' : model.provider[0].toUpperCase()}
                     </div>
 

@@ -1,6 +1,6 @@
 /**
  * AIDE Message Converter
- * 
+ *
  * Converts AI SDK V3 prompts to AIDE API format for both
  * Anthropic (Claude) and OpenAI (GPT) models
  */
@@ -54,9 +54,10 @@ function convertToAnthropicMessages(prompt: LanguageModelV3Prompt): {
           } else if (part.type === 'file') {
             // Handle image files
             if (part.mediaType.startsWith('image/')) {
-              const data = typeof part.data === 'string' 
-                ? part.data 
-                : Buffer.from(part.data as Uint8Array).toString('base64');
+              const data =
+                typeof part.data === 'string'
+                  ? part.data
+                  : Buffer.from(part.data as Uint8Array).toString('base64');
               content.push({
                 type: 'image',
                 source: {
@@ -96,7 +97,7 @@ function convertToAnthropicMessages(prompt: LanguageModelV3Prompt): {
         for (const part of message.content) {
           if (part.type === 'tool-result') {
             let resultContent: string | AnthropicContent[];
-            
+
             if (part.output.type === 'text') {
               resultContent = part.output.value;
             } else if (part.output.type === 'json') {
@@ -130,7 +131,7 @@ function convertToAnthropicMessages(prompt: LanguageModelV3Prompt): {
  * Convert SDK tools to Anthropic tool format
  */
 function convertToAnthropicTools(
-  tools: LanguageModelV3FunctionTool[] | undefined
+  tools: LanguageModelV3FunctionTool[] | undefined,
 ): AnthropicTool[] | undefined {
   if (!tools || tools.length === 0) return undefined;
 
@@ -147,7 +148,7 @@ function convertToAnthropicTools(
  * Convert SDK tool choice to Anthropic format
  */
 function convertToAnthropicToolChoice(
-  toolChoice: LanguageModelV3ToolChoice | undefined
+  toolChoice: LanguageModelV3ToolChoice | undefined,
 ): { type: 'auto' | 'any' | 'tool'; name?: string } | undefined {
   if (!toolChoice) return undefined;
 
@@ -184,9 +185,10 @@ function convertToOpenAIMessages(prompt: LanguageModelV3Prompt): OpenAIMessage[]
             contentParts.push({ type: 'text', text: part.text });
           } else if (part.type === 'file') {
             if (part.mediaType.startsWith('image/')) {
-              const data = typeof part.data === 'string'
-                ? part.data
-                : Buffer.from(part.data as Uint8Array).toString('base64');
+              const data =
+                typeof part.data === 'string'
+                  ? part.data
+                  : Buffer.from(part.data as Uint8Array).toString('base64');
               contentParts.push({
                 type: 'image_url',
                 image_url: {
@@ -207,7 +209,11 @@ function convertToOpenAIMessages(prompt: LanguageModelV3Prompt): OpenAIMessage[]
 
       case 'assistant': {
         let textContent = '';
-        const toolCalls: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> = [];
+        const toolCalls: Array<{
+          id: string;
+          type: 'function';
+          function: { name: string; arguments: string };
+        }> = [];
 
         for (const part of message.content) {
           if (part.type === 'text') {
@@ -271,7 +277,7 @@ function convertToOpenAIMessages(prompt: LanguageModelV3Prompt): OpenAIMessage[]
  * Convert SDK tools to OpenAI tool format
  */
 function convertToOpenAITools(
-  tools: LanguageModelV3FunctionTool[] | undefined
+  tools: LanguageModelV3FunctionTool[] | undefined,
 ): OpenAITool[] | undefined {
   if (!tools || tools.length === 0) return undefined;
 
@@ -292,7 +298,7 @@ function convertToOpenAITools(
  * Convert SDK tool choice to OpenAI format
  */
 function convertToOpenAIToolChoice(
-  toolChoice: LanguageModelV3ToolChoice | undefined
+  toolChoice: LanguageModelV3ToolChoice | undefined,
 ): 'none' | 'auto' | 'required' | { type: 'function'; function: { name: string } } | undefined {
   if (!toolChoice) return undefined;
 
@@ -376,7 +382,7 @@ export function convertToAideRequest(options: ConversionOptions): ConvertedReque
 
   // Filter tools to only function tools
   const functionTools = tools?.filter(
-    (tool): tool is LanguageModelV3FunctionTool => tool.type === 'function'
+    (tool): tool is LanguageModelV3FunctionTool => tool.type === 'function',
   );
 
   if (modelInfo.type === 'anthropic') {

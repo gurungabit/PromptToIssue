@@ -47,7 +47,6 @@ RULES:
 - DO NOT add any text after the JSON block - just output the JSON code block and nothing else
 - You may add a brief introduction before the JSON if helpful, but NEVER add text after it`;
 
-
 export const GITLAB_AGENT_PROMPT = `You are an AI assistant specialized in GitLab project management.
 
 You have access to GitLab tools that allow you to:

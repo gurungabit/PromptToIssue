@@ -5,7 +5,20 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useSession, signOut } from 'next-auth/react';
-import { Plus, MessageSquare, Search, LogIn, LogOut, MoreHorizontal, Trash2, PanelLeftClose, PanelLeft, Share2, Check, Loader2 } from 'lucide-react';
+import {
+  Plus,
+  MessageSquare,
+  Search,
+  LogIn,
+  LogOut,
+  MoreHorizontal,
+  Trash2,
+  PanelLeftClose,
+  PanelLeft,
+  Share2,
+  Check,
+  Loader2,
+} from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
 import { useChatContext } from '@/contexts/ChatContext';
 
@@ -29,7 +42,7 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
   const router = useRouter();
   const { resolvedTheme } = useTheme();
   const { data: session } = useSession();
-  
+
   // Use React Context instead of window events
   const { resetChat, registerChatCreatedCallback } = useChatContext();
 
@@ -85,7 +98,7 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
     try {
       const response = await fetch(`/api/chats/${id}`, { method: 'DELETE' });
       if (response.ok) {
-        setChats(chats.filter(chat => chat.id !== id));
+        setChats(chats.filter((chat) => chat.id !== id));
         // Navigate to new chat if we deleted the current chat
         if (pathname === `/chat/${id}`) {
           resetChat();
@@ -103,13 +116,17 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
   if (collapsed) {
     return (
       <>
-        <aside className={`w-16 h-screen border-r flex flex-col items-center py-4 gap-3 ${
-          isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-white border-zinc-200'
-        }`}>
+        <aside
+          className={`w-16 h-screen border-r flex flex-col items-center py-4 gap-3 ${
+            isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-white border-zinc-200'
+          }`}
+        >
           <button
             onClick={onToggle}
             className={`p-2 rounded-lg transition-colors ${
-              isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+              isDark
+                ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
             }`}
             title="Expand sidebar"
           >
@@ -118,7 +135,9 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           <button
             onClick={handleNewChat}
             className={`w-10 h-10 rounded-lg flex items-center justify-center border ${
-              isDark ? 'bg-zinc-900 text-white border-zinc-700 hover:bg-zinc-800' : 'bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-100'
+              isDark
+                ? 'bg-zinc-900 text-white border-zinc-700 hover:bg-zinc-800'
+                : 'bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-100'
             }`}
             title="New Chat"
           >
@@ -127,29 +146,41 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           <button
             onClick={() => setCommandOpen(true)}
             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+              isDark
+                ? 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
             }`}
             title="Search (⌘K)"
           >
             <Search className="w-5 h-5" />
           </button>
         </aside>
-        <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} chats={chats} onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+        <CommandPalette
+          open={commandOpen}
+          onClose={() => setCommandOpen(false)}
+          chats={chats}
+          onSelectChat={handleSelectChat}
+          onNewChat={handleNewChat}
+        />
       </>
     );
   }
 
   return (
     <>
-      <aside className={`w-64 h-screen border-r flex flex-col ${
-        isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-white border-zinc-200'
-      }`}>
+      <aside
+        className={`w-64 h-screen border-r flex flex-col ${
+          isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-white border-zinc-200'
+        }`}
+      >
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center">
               <span className="text-white font-bold text-sm">P</span>
             </div>
-            <span className={`font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>Prompt2Issue</span>
+            <span className={`font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+              Prompt2Issue
+            </span>
           </div>
           <button
             onClick={onToggle}
@@ -164,7 +195,9 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           <button
             onClick={handleNewChat}
             className={`flex items-center justify-center gap-2 w-full py-2.5 px-4 font-medium text-sm rounded-lg border ${
-              isDark ? 'bg-zinc-900 text-white border-zinc-700 hover:bg-zinc-800' : 'bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-100'
+              isDark
+                ? 'bg-zinc-900 text-white border-zinc-700 hover:bg-zinc-800'
+                : 'bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-100'
             }`}
           >
             <Plus className="w-4 h-4" />
@@ -176,12 +209,18 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           <button
             onClick={() => setCommandOpen(true)}
             className={`w-full flex items-center gap-2 py-2 px-3 border rounded-lg text-sm ${
-              isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700' : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:border-zinc-300'
+              isDark
+                ? 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:border-zinc-300'
             }`}
           >
             <Search className="w-4 h-4" />
             <span className="flex-1 text-left">Search...</span>
-            <kbd className={`px-1.5 py-0.5 rounded text-xs ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`}>⌘K</kbd>
+            <kbd
+              className={`px-1.5 py-0.5 rounded text-xs ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`}
+            >
+              ⌘K
+            </kbd>
           </button>
         </div>
 
@@ -189,7 +228,10 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           {loading ? (
             <div className="space-y-2 p-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className={`h-10 rounded-lg animate-pulse ${isDark ? 'bg-zinc-800/50' : 'bg-zinc-200/50'}`} />
+                <div
+                  key={i}
+                  className={`h-10 rounded-lg animate-pulse ${isDark ? 'bg-zinc-800/50' : 'bg-zinc-200/50'}`}
+                />
               ))}
             </div>
           ) : chats.length === 0 ? (
@@ -197,7 +239,13 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           ) : (
             <div className="space-y-0.5">
               {chats.map((chat) => (
-                <ChatListItem key={chat.id} chat={chat} isActive={pathname === `/chat/${chat.id}`} isDark={isDark} onDelete={handleDeleteChat} />
+                <ChatListItem
+                  key={chat.id}
+                  chat={chat}
+                  isActive={pathname === `/chat/${chat.id}`}
+                  isDark={isDark}
+                  onDelete={handleDeleteChat}
+                />
               ))}
             </div>
           )}
@@ -207,10 +255,16 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           {session?.user ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 px-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${isDark ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-zinc-900'}`}>
-                  {session.user.name?.charAt(0).toUpperCase() || session.user.email?.charAt(0).toUpperCase() || 'U'}
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${isDark ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-zinc-900'}`}
+                >
+                  {session.user.name?.charAt(0).toUpperCase() ||
+                    session.user.email?.charAt(0).toUpperCase() ||
+                    'U'}
                 </div>
-                <span className={`text-sm truncate max-w-[120px] ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                <span
+                  className={`text-sm truncate max-w-[120px] ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}
+                >
                   {session.user.name || session.user.email?.split('@')[0]}
                 </span>
               </div>
@@ -233,12 +287,28 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
           )}
         </div>
       </aside>
-      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} chats={chats} onSelectChat={handleSelectChat} onNewChat={handleNewChat} />
+      <CommandPalette
+        open={commandOpen}
+        onClose={() => setCommandOpen(false)}
+        chats={chats}
+        onSelectChat={handleSelectChat}
+        onNewChat={handleNewChat}
+      />
     </>
   );
 }
 
-function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; isActive: boolean; isDark: boolean; onDelete: (id: string) => void }) {
+function ChatListItem({
+  chat,
+  isActive,
+  isDark,
+  onDelete,
+}: {
+  chat: ChatItem;
+  isActive: boolean;
+  isDark: boolean;
+  onDelete: (id: string) => void;
+}) {
   const [showMenu, setShowMenu] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
@@ -246,17 +316,17 @@ function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; is
   async function handleShare(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (isSharing) return;
     setIsSharing(true);
-    
+
     try {
       const response = await fetch('/api/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId: chat.id }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const url = `${window.location.origin}${data.shareUrl}`;
@@ -278,17 +348,26 @@ function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; is
         href={`/chat/${chat.id}`}
         className={`flex items-center gap-2 w-full py-2 px-3 rounded-lg text-sm ${
           isActive
-            ? isDark ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-zinc-900'
-            : isDark ? 'text-zinc-400 hover:bg-zinc-900 hover:text-white' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+            ? isDark
+              ? 'bg-zinc-800 text-white'
+              : 'bg-zinc-200 text-zinc-900'
+            : isDark
+              ? 'text-zinc-400 hover:bg-zinc-900 hover:text-white'
+              : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
         }`}
       >
         <MessageSquare className="w-4 h-4 shrink-0 opacity-60" />
         <span className="flex-1 truncate">{chat.title}</span>
       </Link>
       <button
-        onClick={(e) => { e.preventDefault(); setShowMenu(!showMenu); }}
+        onClick={(e) => {
+          e.preventDefault();
+          setShowMenu(!showMenu);
+        }}
         className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 ${
-          isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-700' : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200'
+          isDark
+            ? 'text-zinc-500 hover:text-white hover:bg-zinc-700'
+            : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200'
         } ${showMenu ? 'opacity-100' : ''}`}
       >
         <MoreHorizontal className="w-3.5 h-3.5" />
@@ -296,7 +375,9 @@ function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; is
       {showMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-          <div className={`absolute right-0 top-full mt-1 z-50 w-36 py-1 border rounded-lg shadow-xl ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-200'}`}>
+          <div
+            className={`absolute right-0 top-full mt-1 z-50 w-36 py-1 border rounded-lg shadow-xl ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-200'}`}
+          >
             <button
               onClick={handleShare}
               disabled={isSharing}
@@ -322,7 +403,10 @@ function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; is
               )}
             </button>
             <button
-              onClick={() => { setShowMenu(false); onDelete(chat.id); }}
+              onClick={() => {
+                setShowMenu(false);
+                onDelete(chat.id);
+              }}
               className={`w-full px-3 py-1.5 flex items-center gap-2 text-sm text-red-500 ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-zinc-50'}`}
             >
               <Trash2 className="w-3.5 h-3.5" />

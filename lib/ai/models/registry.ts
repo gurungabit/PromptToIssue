@@ -43,11 +43,11 @@ function createProviderInstance(config: ModelConfig): LanguageModel {
  */
 export function getModel(modelId: string): LanguageModel {
   const config = getModelConfig(modelId);
-  
+
   if (!config) {
     throw new Error(`Model "${modelId}" not found or not enabled`);
   }
-  
+
   return createProviderInstance(config);
 }
 
@@ -56,11 +56,11 @@ export function getModel(modelId: string): LanguageModel {
  */
 export function getDefaultModel(): { model: LanguageModel; config: ModelConfig } {
   const config = getModelConfig('gemini-3-flash');
-  
+
   if (!config) {
     throw new Error('No default model configured');
   }
-  
+
   return {
     model: createProviderInstance(config),
     config,

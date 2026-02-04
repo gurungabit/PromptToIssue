@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
 // Model provider schema
-export const ModelProviderSchema = z.enum(['openai', 'anthropic', 'google', 'openrouter', 'ollama', 'aide']);
+export const ModelProviderSchema = z.enum([
+  'openai',
+  'anthropic',
+  'google',
+  'openrouter',
+  'ollama',
+  'aide',
+]);
 export type ModelProvider = z.infer<typeof ModelProviderSchema>;
 
 // Model configuration schema

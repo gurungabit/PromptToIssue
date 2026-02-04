@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth/auth";
-import { db } from "@/lib/db/client";
-import { gitlabFetch } from "@/lib/mcp/gitlab-tools";
+import { auth } from '@/lib/auth/auth';
+import { db } from '@/lib/db/client';
+import { gitlabFetch } from '@/lib/mcp/gitlab-tools';
 
 interface GitLabMilestone {
   id: number;
@@ -25,18 +25,15 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response('Unauthorized', { status: 401 });
     }
 
     const userSettings = await db.getUserSettings(session.user.id);
     if (!userSettings?.gitlabAccessToken) {
-      return new Response(
-        JSON.stringify({ error: "GitLab is not connected" }),
-        {
-          status: 403,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: 'GitLab is not connected' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const tokens = {
@@ -46,12 +43,12 @@ export async function GET(request: Request) {
     };
 
     const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get("projectId");
+    const projectId = searchParams.get('projectId');
 
     if (!projectId) {
-      return new Response(JSON.stringify({ error: "Project ID is required" }), {
+      return new Response(JSON.stringify({ error: 'Project ID is required' }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -64,7 +61,7 @@ export async function GET(request: Request) {
         tokens,
       );
     } catch (error) {
-      console.error("Failed to fetch project milestones:", error);
+      console.error('Failed to fetch project milestones:', error);
     }
 
     // Fetch the project to get its namespace/group hierarchy
@@ -75,7 +72,7 @@ export async function GET(request: Request) {
       );
 
       // If project has a namespace (group), fetch group milestones
-      if (project.namespace?.id && project.namespace?.kind === "group") {
+      if (project.namespace?.id && project.namespace?.kind === 'group') {
         try {
           const ancestorMilestones = await gitlabFetch<GitLabMilestone[]>(
             `/groups/${project.namespace.id}/milestones?state=active&include_ancestors=true&per_page=50`,
@@ -90,11 +87,11 @@ export async function GET(request: Request) {
             }
           }
         } catch (error) {
-          console.error("Failed to fetch group milestones:", error);
+          console.error('Failed to fetch group milestones:', error);
         }
       }
     } catch (error) {
-      console.error("Failed to fetch project details:", error);
+      console.error('Failed to fetch project details:', error);
     }
 
     const formattedMilestones = milestones.map((m) => ({
@@ -110,15 +107,14 @@ export async function GET(request: Request) {
 
     return new Response(JSON.stringify(formattedMilestones), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("List Milestones API Error:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to list milestones";
+    console.error('List Milestones API Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to list milestones';
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }

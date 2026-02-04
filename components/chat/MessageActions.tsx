@@ -22,7 +22,7 @@ export function MessageActions({ messageId, chatId, content }: MessageActionsPro
 
   async function handleFeedback(type: 'positive' | 'negative') {
     if (feedback || isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/feedback', {
@@ -30,7 +30,7 @@ export function MessageActions({ messageId, chatId, content }: MessageActionsPro
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId, chatId, type }),
       });
-      
+
       if (res.ok) {
         setFeedback(type);
       }
@@ -48,7 +48,11 @@ export function MessageActions({ messageId, chatId, content }: MessageActionsPro
         className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded transition-colors"
         title="Copy"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? (
+          <Check className="w-3.5 h-3.5 text-green-400" />
+        ) : (
+          <Copy className="w-3.5 h-3.5" />
+        )}
       </button>
 
       <button

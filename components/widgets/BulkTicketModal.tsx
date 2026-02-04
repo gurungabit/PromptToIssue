@@ -45,12 +45,12 @@ interface TicketSettings {
 }
 
 // Dropdown component that renders in a portal
-function DropdownPortal({ 
-  children, 
-  buttonRef, 
-  isOpen 
-}: { 
-  children: React.ReactNode; 
+function DropdownPortal({
+  children,
+  buttonRef,
+  isOpen,
+}: {
+  children: React.ReactNode;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
   isOpen: boolean;
 }) {
@@ -63,7 +63,7 @@ function DropdownPortal({
       // Leave 120px buffer for footer and padding
       const availableSpace = viewportHeight - rect.bottom - 120;
       const maxHeight = Math.max(100, Math.min(200, availableSpace));
-      
+
       setPosition({
         top: rect.bottom + 4,
         left: rect.left,
@@ -76,26 +76,31 @@ function DropdownPortal({
   if (!isOpen || typeof window === 'undefined') return null;
 
   return createPortal(
-    <div 
+    <div
       className="fixed z-[9999] bg-zinc-800 border border-zinc-600 rounded-lg shadow-xl overflow-y-auto"
-      style={{ top: position.top, left: position.left, width: position.width, maxHeight: position.maxHeight }}
-      onClick={e => e.stopPropagation()}
+      style={{
+        top: position.top,
+        left: position.left,
+        width: position.width,
+        maxHeight: position.maxHeight,
+      }}
+      onClick={(e) => e.stopPropagation()}
     >
       {children}
     </div>,
-    document.body
+    document.body,
   );
 }
 
 // Styled dropdown component for per-ticket selection
-function TicketDropdown({ 
-  children, 
+function TicketDropdown({
+  children,
   placeholder,
   value,
   isOpen,
   onToggle,
-  disabled = false
-}: { 
+  disabled = false,
+}: {
   children: React.ReactNode;
   placeholder: string;
   value: { label: string; icon?: React.ReactNode } | null;
@@ -113,7 +118,7 @@ function TicketDropdown({
       // Leave 80px buffer for footer and padding
       const availableSpace = viewportHeight - rect.bottom - 80;
       const maxHeight = Math.max(120, Math.min(192, availableSpace));
-      
+
       setPosition({
         top: rect.bottom + 4,
         left: rect.left,
@@ -142,55 +147,67 @@ function TicketDropdown({
         ) : (
           <span className="text-zinc-400">{placeholder}</span>
         )}
-        <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
       </button>
-      
-      {isOpen && typeof window !== 'undefined' && createPortal(
-        <div 
-          className="fixed z-[9999] bg-zinc-800 border border-zinc-600 rounded-lg shadow-xl overflow-y-auto"
-          style={{ top: position.top, left: position.left, width: position.width, maxHeight: position.maxHeight }}
-          onClick={e => e.stopPropagation()}
-        >
-          {children}
-        </div>,
-        document.body
-      )}
+
+      {isOpen &&
+        typeof window !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed z-[9999] bg-zinc-800 border border-zinc-600 rounded-lg shadow-xl overflow-y-auto"
+            style={{
+              top: position.top,
+              left: position.left,
+              width: position.width,
+              maxHeight: position.maxHeight,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {children}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
 
-export function BulkTicketModal({ 
-  isOpen, 
-  onClose, 
+export function BulkTicketModal({
+  isOpen,
+  onClose,
   tickets,
   onCreateAll,
-  isCreating = false
+  isCreating = false,
 }: BulkTicketModalProps) {
   // Mode: 'single' = same project for all, 'multi' = per-ticket
   const [mode, setMode] = useState<'single' | 'multi'>('single');
-  
+
   // Projects & Milestones data
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [loadingMilestones, setLoadingMilestones] = useState(false);
-  
+
   // Single mode selections
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
-  
+
   // Multi mode: per-ticket settings
   const [ticketSettings, setTicketSettings] = useState<Map<string, TicketSettings>>(new Map());
   const [ticketMilestones, setTicketMilestones] = useState<Map<string, Milestone[]>>(new Map());
   const [loadingTicketMilestones, setLoadingTicketMilestones] = useState<Set<string>>(new Set());
-  
+
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [showMilestoneDropdown, setShowMilestoneDropdown] = useState(false);
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
-  const [activeTicketDropdown, setActiveTicketDropdown] = useState<{id: string, type: 'project' | 'milestone'} | null>(null);
-  
+  const [activeTicketDropdown, setActiveTicketDropdown] = useState<{
+    id: string;
+    type: 'project' | 'milestone';
+  } | null>(null);
+
   // Refs for portal positioning
   const projectButtonRef = useRef<HTMLButtonElement>(null);
   const milestoneButtonRef = useRef<HTMLButtonElement>(null);
@@ -246,17 +263,19 @@ export function BulkTicketModal({
 
   // Fetch milestones for multi mode (per ticket)
   const fetchTicketMilestones = useCallback(async (ticketKey: string, projectId: number) => {
-    setLoadingTicketMilestones(prev => new Set(prev).add(ticketKey));
+    setLoadingTicketMilestones((prev) => new Set(prev).add(ticketKey));
     try {
       const res = await fetch(`/api/gitlab/milestones?projectId=${projectId}`);
       if (res.ok) {
         const data = await res.json();
-        setTicketMilestones(prev => new Map(prev).set(ticketKey, Array.isArray(data) ? data : []));
+        setTicketMilestones((prev) =>
+          new Map(prev).set(ticketKey, Array.isArray(data) ? data : []),
+        );
       }
     } catch (error) {
       console.error('Failed to fetch milestones:', error);
     } finally {
-      setLoadingTicketMilestones(prev => {
+      setLoadingTicketMilestones((prev) => {
         const next = new Set(prev);
         next.delete(ticketKey);
         return next;
@@ -291,7 +310,7 @@ export function BulkTicketModal({
   };
 
   const handleTicketProjectSelect = (ticketKey: string, project: Project) => {
-    setTicketSettings(prev => {
+    setTicketSettings((prev) => {
       const next = new Map(prev);
       next.set(ticketKey, { project, milestone: null });
       return next;
@@ -301,7 +320,7 @@ export function BulkTicketModal({
   };
 
   const handleTicketMilestoneSelect = (ticketKey: string, milestone: Milestone | null) => {
-    setTicketSettings(prev => {
+    setTicketSettings((prev) => {
       const next = new Map(prev);
       const current = next.get(ticketKey);
       if (current) {
@@ -314,10 +333,10 @@ export function BulkTicketModal({
 
   const handleCreateAll = async () => {
     const assignments: TicketAssignment[] = [];
-    
+
     tickets.forEach((ticket, idx) => {
       const key = getTicketKey(ticket, idx);
-      
+
       if (mode === 'single' && selectedProject) {
         assignments.push({
           ticket,
@@ -337,40 +356,48 @@ export function BulkTicketModal({
         }
       }
     });
-    
+
     if (assignments.length === tickets.length) {
       await onCreateAll(assignments);
     }
   };
 
-  const filteredProjects = projects.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.path.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProjects = projects.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.path.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const canCreate = mode === 'single' 
-    ? !!selectedProject 
-    : Array.from(ticketSettings.values()).filter(s => s.project).length === tickets.length;
+  const canCreate =
+    mode === 'single'
+      ? !!selectedProject
+      : Array.from(ticketSettings.values()).filter((s) => s.project).length === tickets.length;
 
-  const configuredCount = mode === 'single' 
-    ? (selectedProject ? tickets.length : 0)
-    : Array.from(ticketSettings.values()).filter(s => s.project).length;
+  const configuredCount =
+    mode === 'single'
+      ? selectedProject
+        ? tickets.length
+        : 0
+      : Array.from(ticketSettings.values()).filter((s) => s.project).length;
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => {
-      setShowProjectDropdown(false);
-      setShowMilestoneDropdown(false);
-      setActiveTicketDropdown(null);
-    }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={() => {
+        setShowProjectDropdown(false);
+        setShowMilestoneDropdown(false);
+        setActiveTicketDropdown(null);
+      }}
+    >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      
+
       {/* Modal */}
-      <div 
+      <div
         className="relative bg-zinc-900 rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] border border-zinc-700 flex flex-col"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-700">
@@ -430,9 +457,11 @@ export function BulkTicketModal({
                     ) : (
                       <span className="text-zinc-400">Select a project...</span>
                     )}
-                    <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} />
+                    <ChevronDown
+                      className={`w-4 h-4 text-zinc-400 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`}
+                    />
                   </button>
-                  
+
                   <DropdownPortal buttonRef={projectButtonRef} isOpen={showProjectDropdown}>
                     <div className="p-2 border-b border-zinc-700">
                       <div className="relative">
@@ -442,7 +471,7 @@ export function BulkTicketModal({
                           placeholder="Search projects..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          onClick={e => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full pl-9 pr-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:border-blue-500"
                         />
                       </div>
@@ -453,9 +482,11 @@ export function BulkTicketModal({
                           <Loader2 className="w-5 h-5 text-zinc-400 animate-spin" />
                         </div>
                       ) : filteredProjects.length === 0 ? (
-                        <div className="py-4 text-center text-zinc-400 text-sm">No projects found</div>
+                        <div className="py-4 text-center text-zinc-400 text-sm">
+                          No projects found
+                        </div>
                       ) : (
-                        filteredProjects.map(project => (
+                        filteredProjects.map((project) => (
                           <button
                             key={project.id}
                             onClick={() => handleSingleProjectSelect(project)}
@@ -464,9 +495,13 @@ export function BulkTicketModal({
                             <Folder className="w-4 h-4 text-amber-400 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <div className="text-white truncate">{project.name}</div>
-                              <div className="text-zinc-500 text-xs truncate">{project.path_with_namespace || project.path}</div>
+                              <div className="text-zinc-500 text-xs truncate">
+                                {project.path_with_namespace || project.path}
+                              </div>
                             </div>
-                            {selectedProject?.id === project.id && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                            {selectedProject?.id === project.id && (
+                              <Check className="w-4 h-4 text-green-400 shrink-0" />
+                            )}
                           </button>
                         ))
                       )}
@@ -478,7 +513,9 @@ export function BulkTicketModal({
               {/* Milestone Dropdown */}
               {selectedProject && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">Milestone <span className="text-zinc-500">(optional)</span></label>
+                  <label className="text-sm font-medium text-zinc-300">
+                    Milestone <span className="text-zinc-500">(optional)</span>
+                  </label>
                   <div className="relative">
                     <button
                       ref={milestoneButtonRef}
@@ -491,7 +528,10 @@ export function BulkTicketModal({
                       className="w-full flex items-center justify-between px-3 py-2.5 bg-zinc-800 border border-zinc-600 rounded-lg text-left hover:border-zinc-500 transition-colors disabled:opacity-50"
                     >
                       {loadingMilestones ? (
-                        <span className="text-zinc-400 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</span>
+                        <span className="text-zinc-400 flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Loading...
+                        </span>
                       ) : selectedMilestone ? (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-blue-400" />
@@ -500,10 +540,15 @@ export function BulkTicketModal({
                       ) : (
                         <span className="text-zinc-400">No milestone</span>
                       )}
-                      <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${showMilestoneDropdown ? 'rotate-180' : ''}`} />
+                      <ChevronDown
+                        className={`w-4 h-4 text-zinc-400 transition-transform ${showMilestoneDropdown ? 'rotate-180' : ''}`}
+                      />
                     </button>
-                    
-                    <DropdownPortal buttonRef={milestoneButtonRef} isOpen={showMilestoneDropdown && !loadingMilestones}>
+
+                    <DropdownPortal
+                      buttonRef={milestoneButtonRef}
+                      isOpen={showMilestoneDropdown && !loadingMilestones}
+                    >
                       <button
                         onClick={() => handleSingleMilestoneSelect(null)}
                         className="w-full flex items-center gap-2 px-3 py-2 hover:bg-zinc-700 text-left"
@@ -511,7 +556,7 @@ export function BulkTicketModal({
                         <span className="text-zinc-400">No milestone</span>
                         {!selectedMilestone && <Check className="w-4 h-4 text-green-400 ml-auto" />}
                       </button>
-                      {milestones.map(m => (
+                      {milestones.map((m) => (
                         <button
                           key={m.id}
                           onClick={() => handleSingleMilestoneSelect(m)}
@@ -519,7 +564,9 @@ export function BulkTicketModal({
                         >
                           <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
                           <span className="text-white flex-1 truncate">{m.title}</span>
-                          {selectedMilestone?.id === m.id && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                          {selectedMilestone?.id === m.id && (
+                            <Check className="w-4 h-4 text-green-400 shrink-0" />
+                          )}
                         </button>
                       ))}
                       {milestones.length === 0 && (
@@ -535,14 +582,23 @@ export function BulkTicketModal({
                 <label className="text-sm font-medium text-zinc-300">Tickets to create</label>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {tickets.map((ticket, idx) => (
-                    <div key={getTicketKey(ticket, idx)} className="flex items-center gap-3 p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg">
+                    <div
+                      key={getTicketKey(ticket, idx)}
+                      className="flex items-center gap-3 p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg"
+                    >
                       <Check className="w-4 h-4 text-green-400 shrink-0" />
                       <span className="text-white text-sm truncate">{ticket.title}</span>
-                      <span className={`ml-auto px-2 py-0.5 rounded text-xs ${
-                        ticket.type === 'bug' ? 'bg-red-500/20 text-red-400' :
-                        ticket.type === 'feature' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-zinc-500/20 text-zinc-400'
-                      }`}>{ticket.type}</span>
+                      <span
+                        className={`ml-auto px-2 py-0.5 rounded text-xs ${
+                          ticket.type === 'bug'
+                            ? 'bg-red-500/20 text-red-400'
+                            : ticket.type === 'feature'
+                              ? 'bg-blue-500/20 text-blue-400'
+                              : 'bg-zinc-500/20 text-zinc-400'
+                        }`}
+                      >
+                        {ticket.type}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -559,31 +615,46 @@ export function BulkTicketModal({
                 const tMilestones = ticketMilestones.get(key) || [];
                 const isLoading = loadingTicketMilestones.has(key);
                 const isExpanded = expandedTicket === key;
-                const isProjectDropdownOpen = activeTicketDropdown?.id === key && activeTicketDropdown?.type === 'project';
-                const isMilestoneDropdownOpen = activeTicketDropdown?.id === key && activeTicketDropdown?.type === 'milestone';
-                
+                const isProjectDropdownOpen =
+                  activeTicketDropdown?.id === key && activeTicketDropdown?.type === 'project';
+                const isMilestoneDropdownOpen =
+                  activeTicketDropdown?.id === key && activeTicketDropdown?.type === 'milestone';
+
                 return (
                   <div key={key} className="bg-zinc-800/50 border border-zinc-700 rounded-lg">
                     <button
                       onClick={() => setExpandedTicket(isExpanded ? null : key)}
                       className="w-full flex items-center gap-3 p-3 hover:bg-zinc-800 transition-colors"
                     >
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                        settings.project ? 'bg-green-500/20' : 'bg-zinc-600/50'
-                      }`}>
-                        {settings.project ? <Check className="w-3.5 h-3.5 text-green-400" /> : <span className="text-xs text-zinc-400">{idx + 1}</span>}
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                          settings.project ? 'bg-green-500/20' : 'bg-zinc-600/50'
+                        }`}
+                      >
+                        {settings.project ? (
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                        ) : (
+                          <span className="text-xs text-zinc-400">{idx + 1}</span>
+                        )}
                       </div>
                       <div className="flex-1 text-left min-w-0">
-                        <div className="text-white text-sm font-medium truncate">{ticket.title}</div>
+                        <div className="text-white text-sm font-medium truncate">
+                          {ticket.title}
+                        </div>
                         {settings.project && (
                           <div className="text-xs text-zinc-500 truncate">
-                            → {settings.project.name}{settings.milestone && ` • ${settings.milestone.title}`}
+                            → {settings.project.name}
+                            {settings.milestone && ` • ${settings.milestone.title}`}
                           </div>
                         )}
                       </div>
-                      {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-zinc-400" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-zinc-400" />
+                      )}
                     </button>
-                    
+
                     {isExpanded && (
                       <div className="px-4 pb-4 pt-2 border-t border-zinc-700/50 space-y-3">
                         {/* Project */}
@@ -591,11 +662,22 @@ export function BulkTicketModal({
                           <label className="text-xs font-medium text-zinc-400">Project</label>
                           <TicketDropdown
                             placeholder="Select project..."
-                            value={settings.project ? { label: settings.project.name, icon: <Folder className="w-4 h-4 text-amber-400" /> } : null}
+                            value={
+                              settings.project
+                                ? {
+                                    label: settings.project.name,
+                                    icon: <Folder className="w-4 h-4 text-amber-400" />,
+                                  }
+                                : null
+                            }
                             isOpen={isProjectDropdownOpen}
-                            onToggle={() => setActiveTicketDropdown(isProjectDropdownOpen ? null : { id: key, type: 'project' })}
+                            onToggle={() =>
+                              setActiveTicketDropdown(
+                                isProjectDropdownOpen ? null : { id: key, type: 'project' },
+                              )
+                            }
                           >
-                            {projects.map(p => (
+                            {projects.map((p) => (
                               <button
                                 key={p.id}
                                 onClick={() => handleTicketProjectSelect(key, p)}
@@ -603,21 +685,34 @@ export function BulkTicketModal({
                               >
                                 <Folder className="w-4 h-4 text-amber-400 shrink-0" />
                                 <span className="text-white flex-1 truncate">{p.name}</span>
-                                {settings.project?.id === p.id && <Check className="w-4 h-4 text-green-400" />}
+                                {settings.project?.id === p.id && (
+                                  <Check className="w-4 h-4 text-green-400" />
+                                )}
                               </button>
                             ))}
                           </TicketDropdown>
                         </div>
-                        
+
                         {/* Milestone */}
                         {settings.project && (
                           <div className="space-y-1">
                             <label className="text-xs font-medium text-zinc-400">Milestone</label>
                             <TicketDropdown
-                              placeholder={isLoading ? "Loading..." : "No milestone"}
-                              value={settings.milestone ? { label: settings.milestone.title, icon: <Calendar className="w-4 h-4 text-blue-400" /> } : null}
+                              placeholder={isLoading ? 'Loading...' : 'No milestone'}
+                              value={
+                                settings.milestone
+                                  ? {
+                                      label: settings.milestone.title,
+                                      icon: <Calendar className="w-4 h-4 text-blue-400" />,
+                                    }
+                                  : null
+                              }
                               isOpen={isMilestoneDropdownOpen}
-                              onToggle={() => setActiveTicketDropdown(isMilestoneDropdownOpen ? null : { id: key, type: 'milestone' })}
+                              onToggle={() =>
+                                setActiveTicketDropdown(
+                                  isMilestoneDropdownOpen ? null : { id: key, type: 'milestone' },
+                                )
+                              }
                               disabled={isLoading}
                             >
                               <button
@@ -625,9 +720,11 @@ export function BulkTicketModal({
                                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-zinc-700 text-left text-sm"
                               >
                                 <span className="text-zinc-400">No milestone</span>
-                                {!settings.milestone && <Check className="w-4 h-4 text-green-400 ml-auto" />}
+                                {!settings.milestone && (
+                                  <Check className="w-4 h-4 text-green-400 ml-auto" />
+                                )}
                               </button>
-                              {tMilestones.map(m => (
+                              {tMilestones.map((m) => (
                                 <button
                                   key={m.id}
                                   onClick={() => handleTicketMilestoneSelect(key, m)}
@@ -635,7 +732,9 @@ export function BulkTicketModal({
                                 >
                                   <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
                                   <span className="text-white flex-1 truncate">{m.title}</span>
-                                  {settings.milestone?.id === m.id && <Check className="w-4 h-4 text-green-400" />}
+                                  {settings.milestone?.id === m.id && (
+                                    <Check className="w-4 h-4 text-green-400" />
+                                  )}
                                 </button>
                               ))}
                             </TicketDropdown>
@@ -652,9 +751,15 @@ export function BulkTicketModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-zinc-700 bg-zinc-800/50">
-          <div className="text-sm text-zinc-400">{configuredCount} of {tickets.length} configured</div>
+          <div className="text-sm text-zinc-400">
+            {configuredCount} of {tickets.length} configured
+          </div>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} disabled={isCreating} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white disabled:opacity-50">
+            <button
+              onClick={onClose}
+              disabled={isCreating}
+              className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white disabled:opacity-50"
+            >
               Cancel
             </button>
             <button
@@ -662,7 +767,14 @@ export function BulkTicketModal({
               disabled={!canCreate || isCreating}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
             >
-              {isCreating ? <><Loader2 className="w-4 h-4 animate-spin" />Creating...</> : <>Create {tickets.length} Tickets</>}
+              {isCreating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>Create {tickets.length} Tickets</>
+              )}
             </button>
           </div>
         </div>
