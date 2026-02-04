@@ -19,11 +19,12 @@ interface IssueWidgetProps {
   issue: Ticket;
   status?: 'draft' | 'created' | 'preview';
   className?: string;
+  isReadOnly?: boolean;
   onUpdate?: (issue: Ticket) => void;
   onTicketCreated?: (ticketUrl: string, ticketTitle: string) => void;
 }
 
-export function IssueWidget({ issue, status = 'preview', className = '', onUpdate, onTicketCreated }: IssueWidgetProps) {
+export function IssueWidget({ issue, status = 'preview', className = '', isReadOnly = false, onUpdate, onTicketCreated }: IssueWidgetProps) {
   // State for edit mode
   const [isEditing, setIsEditing] = useState(false);
   // We initialize editedIssue with default values for arrays to avoid null access
@@ -493,7 +494,7 @@ export function IssueWidget({ issue, status = 'preview', className = '', onUpdat
       </div>
 
       {/* Footer / Actions for Draft */}
-      {status === 'draft' && (
+      {status === 'draft' && !isReadOnly && (
         <div className="px-5 py-4 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-100 dark:border-zinc-700 flex justify-end gap-3 transition-all duration-200">
           {isEditing ? (
             <>

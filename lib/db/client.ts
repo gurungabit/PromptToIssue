@@ -505,6 +505,44 @@ export async function getFeedback(
   return (result.Item as Feedback) ?? null;
 }
 
+// ... existing code ...
+
+export async function forkChat(
+  originalChatId: string,
+  newUserId: string,
+): Promise<string> {
+  const originalChat = await getChat(originalChatId);
+  if (!originalChat) {
+    throw new Error("Original chat not found");
+  }
+
+  const newChatId = nanoid();
+
+  // Create the new chat
+  await createChat({
+    id: newChatId,
+    userId: newUserId,
+    title: `${originalChat.title} (Fork)`,
+    modelId: originalChat.modelId,
+  });
+
+  // Get original messages
+  const messages = await getMessages(originalChatId);
+
+  // Copy messages to new chat
+  for (const msg of messages) {
+    await addMessage({
+      id: nanoid(),
+      chatId: newChatId,
+      role: msg.role,
+      content: msg.content,
+      parts: msg.parts,
+    });
+  }
+
+  return newChatId;
+}
+
 // Export all functions as a db object for convenience
 export const db = {
   // Users
@@ -521,6 +559,7 @@ export const db = {
   deleteChat,
   makeChatPublic,
   getChatByShareId,
+  forkChat,
   // Messages
   addMessage,
   getMessages,

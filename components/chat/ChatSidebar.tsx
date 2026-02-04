@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useSession, signOut } from 'next-auth/react';
-import { Plus, MessageSquare, Search, LogIn, LogOut, MoreHorizontal, Trash2, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Plus, MessageSquare, Search, LogIn, LogOut, MoreHorizontal, Trash2, PanelLeftClose, PanelLeft, Share2, Check, Loader2 } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
 import { useChatContext } from '@/contexts/ChatContext';
 
@@ -88,7 +88,9 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
         setChats(chats.filter(chat => chat.id !== id));
         // Navigate to new chat if we deleted the current chat
         if (pathname === `/chat/${id}`) {
+          resetChat();
           router.push('/chat/new');
+          router.refresh();
         }
       }
     } catch (error) {
@@ -238,6 +240,37 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
 
 function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; isActive: boolean; isDark: boolean; onDelete: (id: string) => void }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
+
+  async function handleShare(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isSharing) return;
+    setIsSharing(true);
+    
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: chat.id }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const url = `${window.location.origin}${data.shareUrl}`;
+        await navigator.clipboard.writeText(url);
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 2000);
+        setShowMenu(false);
+      }
+    } catch (error) {
+      console.error('Failed to share chat:', error);
+    } finally {
+      setIsSharing(false);
+    }
+  }
 
   return (
     <div className="relative group">
@@ -256,7 +289,7 @@ function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; is
         onClick={(e) => { e.preventDefault(); setShowMenu(!showMenu); }}
         className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 ${
           isDark ? 'text-zinc-500 hover:text-white hover:bg-zinc-700' : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200'
-        }`}
+        } ${showMenu ? 'opacity-100' : ''}`}
       >
         <MoreHorizontal className="w-3.5 h-3.5" />
       </button>
@@ -264,6 +297,30 @@ function ChatListItem({ chat, isActive, isDark, onDelete }: { chat: ChatItem; is
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
           <div className={`absolute right-0 top-full mt-1 z-50 w-36 py-1 border rounded-lg shadow-xl ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-200'}`}>
+            <button
+              onClick={handleShare}
+              disabled={isSharing}
+              className={`w-full px-3 py-1.5 flex items-center gap-2 text-sm ${
+                isDark ? 'text-zinc-300 hover:bg-zinc-800' : 'text-zinc-700 hover:bg-zinc-50'
+              }`}
+            >
+              {showCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                  Copied
+                </>
+              ) : isSharing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Sharing...
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  Share
+                </>
+              )}
+            </button>
             <button
               onClick={() => { setShowMenu(false); onDelete(chat.id); }}
               className={`w-full px-3 py-1.5 flex items-center gap-2 text-sm text-red-500 ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-zinc-50'}`}

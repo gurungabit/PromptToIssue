@@ -5,13 +5,16 @@ import { useTheme } from 'next-themes';
 import { ChevronDown, Check, Sparkles } from 'lucide-react';
 import { getEnabledModels } from '@/lib/ai/models/config';
 
+// ... imports
+
 interface ModelSelectorProps {
   value: string;
   onChange: (id: string) => void;
   disabled?: boolean;
+  openUpwards?: boolean;
 }
 
-export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, disabled, openUpwards = true }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const models = getEnabledModels();
@@ -51,12 +54,14 @@ export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps)
         }`}
       >
         <Sparkles className="w-3.5 h-3.5" />
-        <span className="max-w-[120px] truncate">{selectedModel?.displayName || value}</span>
+        <span className="max-w-[200px] truncate">{selectedModel?.displayName || value}</span>
         <ChevronDown className={`w-3 h-3 opacity-50 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className={`absolute bottom-full mb-2 left-0 w-64 py-1 border rounded-lg shadow-xl z-50 ${
+        <div className={`absolute left-0 w-72 py-1 border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto ${
+          openUpwards ? 'bottom-full mb-2' : 'top-full mt-2'
+        } ${
           isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-200'
         }`}>
           {models.map((model) => (
@@ -73,11 +78,11 @@ export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps)
               }`}
             >
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                <div className={`text-sm font-medium whitespace-normal ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                   {model.displayName}
                 </div>
                 {model.description && (
-                  <div className="text-xs text-zinc-500 truncate">{model.description}</div>
+                  <div className="text-xs text-zinc-500 whitespace-normal line-clamp-2">{model.description}</div>
                 )}
               </div>
               {model.id === value && (

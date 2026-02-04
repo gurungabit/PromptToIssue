@@ -25,9 +25,10 @@ export const MessageBubble = memo(function MessageBubble({
   content, 
   toolInvocations,
   isStreaming = false,
+  isReadOnly = false,
   onTicketCreated,
   onBulkTicketsCreated
-}: MessageBubbleProps) {
+}: MessageBubbleProps & { isReadOnly?: boolean }) {
   const isUser = role === 'user';
   const isAssistant = role === 'assistant';
 
@@ -73,6 +74,7 @@ export const MessageBubble = memo(function MessageBubble({
               content={content} 
               chatId={chatId}
               messageId={id}
+              isReadOnly={isReadOnly}
               onTicketCreated={onTicketCreated} 
               onBulkTicketsCreated={onBulkTicketsCreated} 
             />

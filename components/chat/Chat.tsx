@@ -7,8 +7,9 @@ import { useTheme } from 'next-themes';
 import { useChatContext } from '@/contexts/ChatContext';
 import { MessageBubble, TypingIndicator } from './MessageBubble';
 import { ChatInput } from './ChatInput';
+
 import { SettingsPanel } from '../SettingsPanel';
-import { Settings, X, AlertCircle, ChevronDown, Sparkles, Search, Edit3, Zap } from 'lucide-react';
+import { Settings, X, AlertCircle, ChevronDown, Share2, Check } from 'lucide-react';
 import { ToolInvocation } from './types';
 
 // Part type for tool invocations in AI SDK v6
@@ -80,8 +81,11 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
+  
   const [dismissedError, setDismissedError] = useState<Error | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
   const prevMessageCountRef = useRef(0);
   const hasScrolledToNewMessageRef = useRef(true);
   
@@ -93,8 +97,6 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
     mcpEnabled
   } = useChatContext();
 
-
-
   // Initialize currentChatId from prop
   useEffect(() => {
     if (chatId) {
@@ -102,18 +104,12 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
     }
   }, [chatId, setCurrentChatId]);
 
-
-
   // Use useChat with transport
   const { messages, status, error, sendMessage, setMessages } = useChat({
     id: chatId || 'new-chat',
     messages: initialMessages,
     transport,
   } as UseChatOptions<UIMessage> & { transport?: DefaultChatTransport<UIMessage> });
-
-  // Reset dismissed error when a new error occurs is handled by the render logic (error !== dismissedError)
-  // We don't need a useEffect here to avoid "setState during render" warning.
-  // When 'error' changes to a new object, it will strictly not equal the old 'dismissedError'.
 
   // Register reset callback with context
   useEffect(() => {
@@ -123,10 +119,32 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
   }, [registerResetCallback, setMessages]);
 
   const isLoading = status === 'streaming' || status === 'submitted';
-  // Use messages from useChat - once messages has been populated (either by useChat or by setMessages),
-  // use it. Only fall back to localMessages if messages is completely empty (initial render before hydration).
   const allMessages = messages.length > 0 ? messages : localMessages;
   const hasMessages = allMessages.length > 0;
+
+  async function handleShare() {
+    if (isSharing) return;
+    setIsSharing(true);
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: currentChatId }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const url = `${window.location.origin}${data.shareUrl}`;
+        await navigator.clipboard.writeText(url);
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 2000);
+      }
+    } catch (error) {
+      console.error('Failed to share chat:', error);
+    } finally {
+      setIsSharing(false);
+    }
+  }
 
   // Callback when a ticket is created from the widget
   const handleTicketCreated = useCallback(async (ticketUrl: string, ticketTitle: string) => {
@@ -344,101 +362,131 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
         <h1 className={`font-medium ${isDark ? 'text-white' : 'text-zinc-900'}`}>
           {hasMessages ? 'Chat' : 'Prompt2Issue'}
         </h1>
-        <button 
-          onClick={() => setSettingsOpen(true)}
-          className={`p-2 rounded-lg transition-colors ${
-            isDark 
-              ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' 
-              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
-          }`}
-        >
-          <Settings className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {hasMessages && (
+            <button 
+              onClick={handleShare}
+              disabled={isSharing}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                showCopied 
+                  ? 'bg-green-100 text-green-700 border-green-200' 
+                  : isDark 
+                    ? 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-white' 
+                    : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900'
+              }`}
+            >
+              {showCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  Share
+                </>
+              )}
+            </button>
+          )}
+          <button 
+            onClick={() => setSettingsOpen(true)}
+            className={`p-2 rounded-lg transition-colors ${
+              isDark 
+                ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' 
+                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 relative">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 relative scroll-smooth">
         {!hasMessages ? (
-          <div className="h-full flex flex-col items-center justify-center px-4 pb-32 max-w-2xl mx-auto w-full">
+          <div className="h-full flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
             
-            {/* Hero Section */}
-            <div className="text-center mb-8 space-y-3">
-
-              <h1 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-                Welcome to Prompt-to-Issue
-            </h1>
-              <p className={`text-base max-w-md mx-auto leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                I&apos;m here to help you manage your work on GitLab. No complicated forms needed—just talk to me!
-              </p>
+            {/* Centered Empty State */}
+            <div className={`mb-8 flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 slide-in-from-bottom-4`}>
+                <h1 className={`text-4xl font-bold mb-4 tracking-tight text-center ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                   What can I help you build?
+                </h1>
             </div>
 
-            {/* Getting Started Guide */}
-             <div className={`mb-8 w-full max-w-lg mx-auto rounded-lg p-5 border shadow-sm ${isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-                <h3 className={`text-sm font-medium mb-4 ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>Getting Started:</h3>
-                <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                        <div className={`flex shrink-0 items-center justify-center w-6 h-6 rounded-full text-xs font-semibold mt-0.5 ${isDark ? 'bg-zinc-800 text-zinc-300 ring-1 ring-zinc-700' : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'}`}>1</div>
-                        <div>
-                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Connect your account</p>
-                           <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                             Open <button onClick={() => setSettingsOpen(true)} className="text-blue-500 hover:underline font-medium focus:outline-none">Settings</button> to link your GitLab.
-                           </p>
-                        </div>
-                    </div>
-                     <div className="flex items-start gap-3">
-                        <div className={`flex shrink-0 items-center justify-center w-6 h-6 rounded-full text-xs font-semibold mt-0.5 ${isDark ? 'bg-zinc-800 text-zinc-300 ring-1 ring-zinc-700' : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'}`}>2</div>
-                        <div>
-                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Tell me what to do</p>
-                           <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                             Type &quot;Analyze open issues&quot; or &quot;Create a bug report&quot;.
-                           </p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <div className={`flex shrink-0 items-center justify-center w-6 h-6 rounded-full text-xs font-semibold mt-0.5 ${isDark ? 'bg-zinc-800 text-zinc-300 ring-1 ring-zinc-700' : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'}`}>3</div>
-                         <div>
-                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>I handle the rest</p>
-                           <p className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                             I&apos;ll create tickets, list milestones, and answer questions.
-                           </p>
-                        </div>
-                    </div>
-                </div>
+            <div className="w-full animate-in fade-in zoom-in-95 duration-500 delay-100 slide-in-from-bottom-6">
+                <ChatInput
+                   onSend={handleSend}
+                   disabled={isLoading}
+                   modelId={modelId}
+                   onModelChange={handleModelChange}
+                   centered={true}
+                />
             </div>
-
-            {/* Example Prompts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-              {EXAMPLE_PROMPTS.map((prompt, i) => (
+            
+            <div className="mt-8 grid grid-cols-2 gap-2 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-200 slide-in-from-bottom-8">
+              {EXAMPLE_PROMPTS.slice(0, 4).map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => handleSend(prompt)}
-                  disabled={isLoading}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors disabled:opacity-50 ${
+                  className={`text-sm text-left px-4 py-3 rounded-xl transition-all ${
                     isDark 
-                      ? 'bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-800/60 hover:border-zinc-700 text-zinc-300' 
-                      : 'bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-md text-zinc-600'
+                      ? 'bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200' 
+                      : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 p-1.5 rounded-md transition-colors ${
-                      isDark ? 'bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200' : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200 group-hover:text-zinc-700'
-                    }`}>
-                      {i === 0 ? <Search className="w-4 h-4" /> :
-                       i === 1 ? <Edit3 className="w-4 h-4" /> :
-                       i === 2 ? <Zap className="w-4 h-4" /> :
-                       <Sparkles className="w-4 h-4" />}
-                    </div>
-                    <span className="text-sm font-medium leading-tight opacity-90 group-hover:opacity-100">
                   {prompt}
-                    </span>
-                  </div>
                 </button>
               ))}
             </div>
+
+            {/* User Guide & Privacy Notice */}
+            <div className="mt-12 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-300 slide-in-from-bottom-10 space-y-8">
+              
+              {/* Usage Guide */}
+              <div>
+                <h3 className={`text-sm font-semibold mb-3 uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>How it works</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}>
+                    <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mb-3 font-bold text-sm">1</div>
+                    <h4 className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Connect GitLab</h4>
+                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>Link your account in Settings to access projects.</p>
+                  </div>
+                  <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}>
+                    <div className="w-8 h-8 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center mb-3 font-bold text-sm">2</div>
+                    <h4 className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Ask Questions</h4>
+                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>Chat about your codebase or plan new features.</p>
+                  </div>
+                  <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/20 border-zinc-800/50' : 'bg-white border-zinc-100'}`}>
+                    <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-3 font-bold text-sm">3</div>
+                    <h4 className={`font-medium mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>Create Tickets</h4>
+                    <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>Turn conversations into issues with one click.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Privacy Notice */}
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-orange-900/10 border-orange-900/30' : 'bg-orange-50/50 border-orange-200/50'}`}>
+                <h3 className={`text-sm font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
+                   Security & Privacy Notice
+                </h3>
+                <div className={`text-xs leading-relaxed space-y-2 ${isDark ? 'text-orange-300' : 'text-orange-600'}`}>
+                   <p>Please observe all AI Assistant Expectations. Do not include:</p>
+                   <ul className="list-disc pl-4 space-y-0.5 opacity-90">
+                      <li>Personal identifiers (customer name, claim#, policy#, contact info)</li>
+                      <li>SSN, TIN, SIN, driver&apos;s license numbers</li>
+                      <li>Financial account numbers, credit/debit card numbers</li>
+                      <li>PHI, medical information</li>
+                      <li>Usernames, passwords, or access keys</li>
+                   </ul>
+                </div>
+              </div>
+
+            </div>
+
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto py-4">
+          <div className="max-w-3xl mx-auto py-8 px-4">
             {allMessages.map((message, index) => {
               // Extract tool invocations from parts (AI SDK v6 format)
               // Prefer existing toolInvocations if available (from ChatPage hydration)
@@ -466,13 +514,13 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
             {isLoading && allMessages[allMessages.length - 1]?.role === 'user' && (
               <TypingIndicator />
             )}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-4" />
           </div>
         )}
         
         {/* Scroll to bottom button - sticky inside scroll container */}
         {showScrollButton && (
-          <div className="sticky bottom-4 flex justify-center pointer-events-none">
+          <div className="sticky bottom-4 flex justify-center pointer-events-none z-10">
             <button
               onClick={scrollToBottom}
               className={`pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full shadow-lg transition-all hover:scale-105 ${
@@ -508,14 +556,17 @@ function ChatInner({ chatId, initialMessages = [], transport }: ChatProps & { tr
         </div>
       )}
 
-      <div className={`shrink-0 ${isDark ? 'bg-zinc-950' : 'bg-zinc-50'}`}>
-        <ChatInput
-          onSend={handleSend}
-          disabled={isLoading}
-          modelId={modelId}
-          onModelChange={handleModelChange}
-        />
-      </div>
+      {/* Only show bottom input when there are messages */}
+      {hasMessages && (
+        <div className={`shrink-0 ${isDark ? 'bg-zinc-950' : 'bg-zinc-50'}`}>
+          <ChatInput
+            onSend={handleSend}
+            disabled={isLoading}
+            modelId={modelId}
+            onModelChange={handleModelChange}
+          />
+        </div>
+      )}
     </div>
   );
 }

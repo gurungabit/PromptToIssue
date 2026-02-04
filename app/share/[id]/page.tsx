@@ -1,3 +1,5 @@
+import { auth } from '@/lib/auth/auth';
+import { ForkChatButton } from '@/components/chat/ForkChatButton';
 import { db } from '@/lib/db/client';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { notFound } from 'next/navigation';
@@ -9,6 +11,7 @@ interface SharePageProps {
 
 export default async function SharePage({ params }: SharePageProps) {
   const { id } = await params;
+  const session = await auth();
   
   // Get share info
   const share = await db.getPublicShare(id);
@@ -23,7 +26,7 @@ export default async function SharePage({ params }: SharePageProps) {
   if (!chat) {
     notFound();
   }
-  
+
   return (
     <div className="min-h-screen bg-zinc-950">
       {/* Header */}
@@ -38,12 +41,26 @@ export default async function SharePage({ params }: SharePageProps) {
           <span className="text-zinc-600">•</span>
           <span className="text-zinc-400 text-sm">Shared Chat</span>
         </div>
-        <Link
-          href="/chat/new"
-          className="px-4 py-2 text-sm font-medium text-zinc-900 bg-white rounded-lg hover:bg-zinc-200 transition-colors"
-        >
-          Try it yourself
-        </Link>
+        
+        <div className="flex items-center gap-3">
+          {session?.user ? (
+            <ForkChatButton shareId={id} />
+          ) : (
+            <Link
+              href={`/api/auth/signin?callbackUrl=/share/${id}`}
+              className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+            >
+              Sign in to Fork
+            </Link>
+          )}
+          
+          <Link
+            href="/chat/new"
+            className="px-4 py-2 text-sm font-medium text-zinc-900 bg-white rounded-lg hover:bg-zinc-200 transition-colors"
+          >
+            New Chat
+          </Link>
+        </div>
       </header>
       
       {/* Chat title */}
@@ -61,6 +78,7 @@ export default async function SharePage({ params }: SharePageProps) {
             key={message.id}
             role={message.role as 'user' | 'assistant'}
             content={message.content}
+            isReadOnly={true}
           />
         ))}
       </div>

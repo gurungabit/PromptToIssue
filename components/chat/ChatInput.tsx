@@ -10,6 +10,7 @@ interface ChatInputProps {
   disabled?: boolean;
   modelId: string;
   onModelChange: (id: string) => void;
+  centered?: boolean;
 }
 
 export const ChatInput = memo(function ChatInput({
@@ -17,6 +18,7 @@ export const ChatInput = memo(function ChatInput({
   disabled = false,
   modelId,
   onModelChange,
+  centered = false,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -51,49 +53,56 @@ export const ChatInput = memo(function ChatInput({
   const isDark = resolvedTheme !== 'light';
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 pb-4">
-      <div className={`relative rounded-2xl transition-all ${
-        isDark 
-          ? 'bg-zinc-900 border border-zinc-700 focus-within:border-zinc-600 focus-within:ring-1 focus-within:ring-zinc-600' 
-          : 'bg-white border border-zinc-300 shadow-sm focus-within:border-zinc-400 focus-within:ring-1 focus-within:ring-zinc-400'
-      }`}>
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type your message here..."
-          disabled={disabled}
-          rows={1}
-          className={`w-full bg-transparent px-4 pt-4 pb-14 resize-none focus:outline-none disabled:opacity-50 min-h-[60px] max-h-[180px] ${
-            isDark 
-              ? 'text-white placeholder:text-zinc-500' 
-              : 'text-zinc-900 placeholder:text-zinc-400'
-          }`}
-        />
-
-        <div className={`absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2 border-t rounded-b-2xl ${
-          isDark ? 'border-zinc-800 bg-zinc-900' : 'border-zinc-200 bg-white'
+    <div className={`w-full mx-auto transition-all duration-300 ${centered ? 'max-w-2xl px-4' : 'max-w-3xl px-4 pb-4'}`}>
+      <div className="relative transition-all duration-300">
+        <div className={`rounded-3xl border transition-colors ${
+          centered ? 'shadow-lg' : 'shadow-sm'
+        } ${
+          isDark 
+            ? 'bg-zinc-900/50 backdrop-blur-xl border-zinc-700/50 focus-within:border-zinc-500/50 focus-within:ring-1 focus-within:ring-zinc-500/20' 
+            : 'bg-white/80 backdrop-blur-xl border-zinc-200 focus-within:border-zinc-300 focus-within:ring-1 focus-within:ring-zinc-200'
         }`}>
-          <div className="flex items-center gap-1">
-            <ModelSelector
-              value={modelId}
-              onChange={onModelChange}
-              disabled={disabled}
-            />
-          </div>
-
-          <button
-            onClick={handleSend}
-            disabled={disabled || !value.trim()}
-            className={`w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={centered ? "What can I help you build today?" : "Type your message..."}
+            disabled={disabled}
+            rows={1}
+            className={`w-full bg-transparent px-6 py-4 resize-none focus:outline-none disabled:opacity-50 min-h-[60px] max-h-[180px] ${
               isDark 
-                ? 'bg-white text-zinc-900 hover:bg-zinc-200' 
-                : 'bg-zinc-900 text-white hover:bg-zinc-700'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-          </button>
+                ? 'text-white placeholder:text-zinc-500' 
+                : 'text-zinc-900 placeholder:text-zinc-400'
+            } ${centered ? 'text-lg' : 'text-base'}`}
+          />
+          
+          <div className={`flex items-center justify-between px-4 pb-3 rounded-b-3xl`}>
+             <div className="flex items-center gap-2">
+               <ModelSelector
+                 value={modelId}
+                 onChange={onModelChange}
+                 disabled={disabled}
+                 openUpwards={!centered}
+               />
+             </div>
+
+             <button
+              onClick={handleSend}
+              disabled={disabled || !value.trim()}
+              className={`p-2 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all ${
+                value.trim() 
+                  ? isDark 
+                    ? 'bg-white text-zinc-900 hover:bg-zinc-200 scale-100' // Active state dark mode
+                    : 'bg-zinc-900 text-white hover:bg-zinc-700 scale-100' // Active state light mode
+                  : isDark
+                    ? 'bg-zinc-800 text-zinc-500' // Inactive state dark mode
+                    : 'bg-zinc-100 text-zinc-400' // Inactive state light mode
+              }`}
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -15,11 +15,12 @@ interface ArtifactRendererProps {
   content: string;
   chatId?: string;
   messageId?: string;
+  isReadOnly?: boolean;
   onTicketCreated?: (ticketUrl: string, ticketTitle: string) => void;
   onBulkTicketsCreated?: (results: { ticket: string; webUrl?: string }[]) => void;
 }
 
-export function ArtifactRenderer({ content, chatId, messageId, onTicketCreated, onBulkTicketsCreated }: ArtifactRendererProps) {
+export function ArtifactRenderer({ content, chatId, messageId, isReadOnly = false, onTicketCreated, onBulkTicketsCreated }: ArtifactRendererProps) {
   const parts = useMemo(() => parseContent(content), [content]);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkTickets, setBulkTickets] = useState<Ticket[]>([]);
@@ -123,7 +124,7 @@ export function ArtifactRenderer({ content, chatId, messageId, onTicketCreated, 
               )}
               
               {/* Create All button for multiple tickets */}
-              {hasMultipleTickets && (
+              {hasMultipleTickets && !isReadOnly && (
                 <button
                   onClick={() => handleOpenBulkModal(part.data.tickets)}
                   className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-medium rounded-lg transition-all shadow-lg hover:shadow-xl"
@@ -142,6 +143,7 @@ export function ArtifactRenderer({ content, chatId, messageId, onTicketCreated, 
                       key={ticketKey} 
                       issue={displayTicket} 
                       status="draft"
+                      isReadOnly={isReadOnly}
                       onTicketCreated={onTicketCreated}
                       onUpdate={(updated) => handleTicketUpdate(ticketKey, updated)}
                     />
