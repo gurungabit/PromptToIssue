@@ -212,6 +212,29 @@ export const searchCodeSchema = z.object({
   search: z.string().describe('The code term to search for'),
 });
 
+async function resolveProjectRef(
+  projectId: string | number,
+  ref: string | undefined,
+  tokens: { accessToken: string; refreshToken?: string; userId?: string },
+): Promise<string> {
+  if (ref) return ref;
+
+  // Fetch project details to get default branch
+  try {
+    const project = await gitlabFetch<GitLabProject>(
+      `/projects/${encodeURIComponent(String(projectId))}`,
+      tokens,
+    );
+    return project.default_branch;
+  } catch (error) {
+    console.warn(
+      `[GitLab] Failed to fetch default branch for project ${projectId}, defaulting to 'main'`,
+      error,
+    );
+    return 'main';
+  }
+}
+
 // Tool executor functions
 export async function executeListProjects(
   params: z.infer<typeof listProjectsSchema>,
@@ -450,15 +473,18 @@ export async function executeGetFileContent(
   try {
     const projectPath = encodeURIComponent(String(params.projectId));
     const filePath = encodeURIComponent(params.filePath);
-    const ref = params.ref ? `&ref=${encodeURIComponent(params.ref)}` : '';
+
+    // Resolve ref (provided or default)
+    const ref = await resolveProjectRef(params.projectId, params.ref, tokens);
+    const refParam = `&ref=${encodeURIComponent(ref)}`;
 
     const data = await gitlabFetch<{ content: string; file_name: string }>(
-      `/projects/${projectPath}/repository/files/${filePath}?${ref}`,
+      `/projects/${projectPath}/repository/files/${filePath}?${refParam}`,
       tokens,
     );
 
     const content = Buffer.from(data.content, 'base64').toString('utf-8');
-    return { content, fileName: data.file_name };
+    return { content, fileName: data.file_name, ref };
   } catch (error) {
     return { error: `Error fetching file: ${error}` };
   }
@@ -473,8 +499,13 @@ export async function executeListRepoFiles(
     const pathParam = params.path ? `&path=${encodeURIComponent(params.path)}` : '';
     const recursive = params.recursive ? '&recursive=true' : '';
 
+    // Resolve ref to ensure we're looking at the right branch
+    // Note: tree API uses 'ref' query param to specify branch/tag/commit
+    const ref = await resolveProjectRef(params.projectId, undefined, tokens);
+    const refParam = `&ref=${encodeURIComponent(ref)}`;
+
     const data = await gitlabFetch<Array<{ name: string; path: string; type: string }>>(
-      `/projects/${projectPath}/repository/tree?per_page=50${pathParam}${recursive}`,
+      `/projects/${projectPath}/repository/tree?per_page=50${pathParam}${recursive}${refParam}`,
       tokens,
     );
 
