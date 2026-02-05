@@ -160,6 +160,32 @@ export async function updateUserSettings(
 
 export async function createChat(input: ChatInput): Promise<Chat> {
   const now = new Date().toISOString();
+
+  // Enforce Max 20 Conversations
+  const existingChats = await getUserChats(input.userId, 100); // Fetch more to be safe
+  const MAX_CHATS = 20;
+
+  // If we're at or above the limit, delete oldest chats until we have room for one more
+  if (existingChats.length >= MAX_CHATS) {
+    // Sort by createdAt ascending (oldest first) just to be sure, though getUserChats returns newest first.
+    // existingChats is newest first, so oldest are at the end.
+    const sortedChats = [...existingChats].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+    // We need to remove enough chats so that (existing - removed) + 1 <= MAX_CHATS
+    // i.e., removed >= existing + 1 - MAX_CHATS
+    const countToRemove = existingChats.length + 1 - MAX_CHATS;
+
+    const chatsToDelete = sortedChats.slice(0, countToRemove);
+
+    console.log(
+      `[db] Enforcing limit: Deleting ${chatsToDelete.length} old chat(s) for user ${input.userId}`,
+    );
+
+    for (const chat of chatsToDelete) {
+      await deleteChat(chat.id);
+    }
+  }
+
   const chat: Chat = {
     PK: `CHAT#${input.id}`,
     SK: 'META',
