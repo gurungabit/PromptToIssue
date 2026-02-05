@@ -24,55 +24,6 @@ import {
 } from 'lucide-react';
 import { ToolInvocation } from './types';
 
-// Part type for tool invocations in AI SDK v6
-// Tool parts have type: "tool-{toolName}" with input/output properties
-interface ToolPart {
-  type: string;
-  toolCallId: string;
-  state: 'input-streaming' | 'input-available' | 'output-streaming' | 'output-available';
-  input?: Record<string, unknown>;
-  output?: unknown;
-}
-
-// Helper to extract tool invocations from message parts
-// AI SDK v6 uses "tool-{toolName}" as the type (e.g., "tool-list_projects")
-function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
-  if (!parts || !Array.isArray(parts)) return [];
-  const toolInvocations: ToolInvocation[] = [];
-
-  for (const part of parts) {
-    if (
-      typeof part === 'object' &&
-      part !== null &&
-      'type' in part &&
-      typeof (part as { type: string }).type === 'string' &&
-      (part as { type: string }).type.startsWith('tool-') &&
-      'toolCallId' in part
-    ) {
-      const tp = part as ToolPart;
-      const toolName = tp.type.replace(/^tool-/, ''); // Extract tool name from "tool-list_projects" -> "list_projects"
-
-      // Map AI SDK state to our ToolInvocation state
-      let state: 'call' | 'partial-call' | 'result' = 'call';
-      if (tp.state === 'output-available' || tp.state === 'output-streaming') {
-        state = 'result';
-      } else if (tp.state === 'input-streaming') {
-        state = 'partial-call';
-      }
-
-      toolInvocations.push({
-        toolCallId: tp.toolCallId,
-        toolName: toolName,
-        args: tp.input || {},
-        state: state,
-        result: tp.output,
-      });
-    }
-  }
-
-  return toolInvocations;
-}
-
 interface ChatProps {
   chatId?: string;
   initialMessages?: UIMessage[];
@@ -597,12 +548,11 @@ function ChatInner({
               // Prefer existing toolInvocations if available (from ChatPage hydration)
               const existingTools = (message as unknown as { toolInvocations?: ToolInvocation[] })
                 .toolInvocations;
-              const calculatedTools = getToolInvocationsFromParts(
-                (message as unknown as { parts?: Array<{ type: string; [key: string]: unknown }> })
-                  .parts,
-              );
-              const toolInvocations =
-                existingTools && existingTools.length > 0 ? existingTools : calculatedTools;
+
+              // We pass 'parts' to MessageBubble so it can compute tool invocations internally with useMemo
+              // This prevents breaking React.memo on every render
+              const parts = (message as unknown as { parts?: unknown[] }).parts;
+
               const isLastMessage = index === allMessages.length - 1;
               return (
                 <div key={message.id} ref={isLastMessage ? lastMessageRef : undefined}>
@@ -611,7 +561,8 @@ function ChatInner({
                     chatId={currentChatId}
                     role={message.role as 'user' | 'assistant'}
                     content={getMessageContent(message)}
-                    toolInvocations={toolInvocations.length > 0 ? toolInvocations : undefined}
+                    toolInvocations={existingTools}
+                    parts={parts}
                     isStreaming={isLoading && isLastMessage && message.role === 'assistant'}
                     onTicketCreated={handleTicketCreated}
                     onBulkTicketsCreated={handleBulkTicketsCreated}

@@ -1,7 +1,7 @@
 'use client';
 
 import { Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { useState, memo } from 'react';
+import { useState, memo, useMemo } from 'react';
 import { ArtifactRenderer } from './ArtifactRenderer';
 import { ToolCallsDisplay } from './ToolCall';
 import { ToolInvocation } from './types';
@@ -17,6 +17,53 @@ interface MessageBubbleProps {
   onBulkTicketsCreated?: (results: { ticket: string; webUrl?: string }[]) => void;
 }
 
+// Part type for tool invocations in AI SDK v6
+interface ToolPart {
+  type: string;
+  toolCallId: string;
+  state: 'input-streaming' | 'input-available' | 'output-streaming' | 'output-available';
+  input?: Record<string, unknown>;
+  output?: unknown;
+}
+
+// Helper to extract tool invocations from message parts
+function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
+  if (!parts || !Array.isArray(parts)) return [];
+  const toolInvocations: ToolInvocation[] = [];
+
+  for (const part of parts) {
+    if (
+      typeof part === 'object' &&
+      part !== null &&
+      'type' in part &&
+      typeof (part as { type: string }).type === 'string' &&
+      (part as { type: string }).type.startsWith('tool-') &&
+      'toolCallId' in part
+    ) {
+      const tp = part as ToolPart;
+      const toolName = tp.type.replace(/^tool-/, ''); // Extract tool name from "tool-list_projects" -> "list_projects"
+
+      // Map AI SDK state to our ToolInvocation state
+      let state: 'call' | 'partial-call' | 'result' = 'call';
+      if (tp.state === 'output-available' || tp.state === 'output-streaming') {
+        state = 'result';
+      } else if (tp.state === 'input-streaming') {
+        state = 'partial-call';
+      }
+
+      toolInvocations.push({
+        toolCallId: tp.toolCallId,
+        toolName: toolName,
+        args: tp.input || {},
+        state: state,
+        result: tp.output,
+      });
+    }
+  }
+
+  return toolInvocations;
+}
+
 // Memoize to prevent unnecessary re-renders during streaming
 export const MessageBubble = memo(function MessageBubble({
   id,
@@ -24,13 +71,23 @@ export const MessageBubble = memo(function MessageBubble({
   role,
   content,
   toolInvocations,
+  parts,
   isStreaming = false,
   isReadOnly = false,
   onTicketCreated,
   onBulkTicketsCreated,
-}: MessageBubbleProps & { isReadOnly?: boolean }) {
+}: MessageBubbleProps & { isReadOnly?: boolean; parts?: unknown[] }) {
   const isUser = role === 'user';
   const isAssistant = role === 'assistant';
+
+  // Memoize tool parsing to prevent re-renders when other props (like streaming content) change
+  // IF the parts array is referentially stable (which it is for history)
+  // For streaming, useMemo will re-run but that's fine for the active message.
+  // Crucially, for historical messages, 'parts' and 'toolInvocations' props will be stable, so 'displayTools' will be stable.
+  const displayTools = useMemo(() => {
+    if (toolInvocations && toolInvocations.length > 0) return toolInvocations;
+    return getToolInvocationsFromParts(parts);
+  }, [toolInvocations, parts]);
 
   // Check if content looks like a JSON error - simpler detection
   const looksLikeJsonError =
@@ -66,10 +123,10 @@ export const MessageBubble = memo(function MessageBubble({
           </div>
         ) : (
           <div className="text-zinc-800 dark:text-zinc-200 text-[15px] leading-relaxed">
-            {toolInvocations && toolInvocations.length > 0 && (
+            {displayTools && displayTools.length > 0 && (
               <div className="mb-4">
                 <ToolCallsDisplay
-                  toolCalls={toolInvocations.map((inv) => ({
+                  toolCalls={displayTools.map((inv: ToolInvocation) => ({
                     name: inv.toolName,
                     args: inv.args,
                     result: 'result' in inv ? inv.result : undefined,
