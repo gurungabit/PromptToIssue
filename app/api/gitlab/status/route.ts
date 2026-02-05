@@ -99,6 +99,49 @@ export async function GET() {
     }
   }
 
-  // 3. No refresh token = completely unauthenticated
+  // 3. If cookies are missing, check DB (migration path for existing users)
+  if (!accessToken && !refreshToken) {
+    const { db } = await import('@/lib/db/client');
+    const userSettings = await db.getUserSettings(session.user.id);
+
+    if (userSettings?.gitlabAccessToken) {
+      console.log('[GitLab Status] Migrating tokens from DB to cookies');
+
+      // Set cookies from DB
+      cookieStore.set('gitlab_access_token', userSettings.gitlabAccessToken, {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: userSettings.gitlabTokenExpiry
+          ? (new Date(userSettings.gitlabTokenExpiry).getTime() - Date.now()) / 1000
+          : 7200, // Default to 2 hours if unknown
+      });
+
+      if (userSettings.gitlabRefreshToken) {
+        cookieStore.set('gitlab_refresh_token', userSettings.gitlabRefreshToken, {
+          secure: true,
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 60 * 60 * 24 * 30, // 30 days
+        });
+      }
+
+      if (userSettings.gitlabTokenExpiry) {
+        cookieStore.set('gitlab_expiry', userSettings.gitlabTokenExpiry, {
+          secure: true,
+          httpOnly: false,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: (new Date(userSettings.gitlabTokenExpiry).getTime() - Date.now()) / 1000,
+        });
+      }
+
+      return NextResponse.json({ authenticated: true, status: 'migrated' });
+    }
+  }
+
+  // 4. No refresh token and no DB token = completely unauthenticated
   return NextResponse.json({ authenticated: false, reason: 'no_tokens' }, { status: 401 });
 }

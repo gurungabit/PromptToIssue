@@ -496,7 +496,9 @@ function ChatInner({
                 onModelChange={handleModelChange}
                 centered={true}
               />
-              <div className={`flex items-center justify-center gap-1.5 mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+              <div
+                className={`flex items-center justify-center gap-1.5 mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
+              >
                 <AlertTriangle className="w-3 h-3" />
                 <p className="text-[11px] font-medium">
                   Only the last 20 conversations are saved for history.

@@ -12,11 +12,11 @@ export async function POST() {
 
     // Clear GitLab credentials
     await db.updateUserSettings(session.user.id, {
-      gitlabAccessToken: undefined,
-      gitlabRefreshToken: undefined,
-      gitlabTokenExpiry: undefined,
-      gitlabUsername: undefined,
-      gitlabUserId: undefined,
+      gitlabAccessToken: null,
+      gitlabRefreshToken: null,
+      gitlabTokenExpiry: null,
+      gitlabUsername: null,
+      gitlabUserId: null,
       mcpEnabled: false,
     });
 

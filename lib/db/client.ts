@@ -120,21 +120,34 @@ export async function getUserSettings(userId: string): Promise<UserSettings | nu
 
 export async function updateUserSettings(
   userId: string,
-  settings: Partial<Omit<UserSettings, 'PK' | 'SK' | 'userId' | 'updatedAt'>>,
+  settings: Partial<{
+    [K in keyof Omit<UserSettings, 'PK' | 'SK' | 'userId' | 'updatedAt'>]: UserSettings[K] | null;
+  }>,
 ): Promise<UserSettings> {
   const now = new Date().toISOString();
 
   // Build update expression dynamically
   const updateParts: string[] = ['#updatedAt = :updatedAt'];
+  const removeParts: string[] = [];
   const expressionNames: Record<string, string> = { '#updatedAt': 'updatedAt' };
   const expressionValues: Record<string, unknown> = { ':updatedAt': now };
 
   for (const [key, value] of Object.entries(settings)) {
-    if (value !== undefined) {
+    if (value === null) {
+      // If value is explicitly null, we want to remove the attribute
+      removeParts.push(`#${key}`);
+      expressionNames[`#${key}`] = key;
+    } else if (value !== undefined) {
+      // If value is defined (and not null), update it
       updateParts.push(`#${key} = :${key}`);
       expressionNames[`#${key}`] = key;
       expressionValues[`:${key}`] = value;
     }
+  }
+
+  let updateExpression = `SET ${updateParts.join(', ')}`;
+  if (removeParts.length > 0) {
+    updateExpression += ` REMOVE ${removeParts.join(', ')}`;
   }
 
   const result = await docClient.send(
@@ -144,7 +157,7 @@ export async function updateUserSettings(
         PK: `USER#${userId}`,
         SK: 'SETTINGS',
       },
-      UpdateExpression: `SET ${updateParts.join(', ')}`,
+      UpdateExpression: updateExpression,
       ExpressionAttributeNames: expressionNames,
       ExpressionAttributeValues: expressionValues,
       ReturnValues: 'ALL_NEW',
