@@ -1,5 +1,6 @@
 import { streamText, stepCountIs } from 'ai';
 import { z } from 'zod';
+import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 import { getModel, getDefaultModel } from '@/lib/ai/models/registry';
 import { getModelConfig } from '@/lib/ai/models/config';
@@ -144,27 +145,33 @@ export async function POST(request: Request) {
     let tools = {};
     const userSettings = await db.getUserSettings(session.user.id);
 
+    // Get tokens from cookies (preferred) or DB (fallback)
+    const cookieStore = await cookies();
+    const cookieAccessToken = cookieStore.get('gitlab_access_token')?.value;
+    const cookieRefreshToken = cookieStore.get('gitlab_refresh_token')?.value; // although we don't strictly need refresh token for the tools execution, we pass it just in case
+
+    const accessToken = cookieAccessToken || userSettings?.gitlabAccessToken;
+    const refreshToken = cookieRefreshToken || userSettings?.gitlabRefreshToken;
+
     // Default to true if not specified (backward compatibility)
     const toolsEnabled = parsed.data.mcpEnabled !== false;
 
     console.log('[API] Chat request:', {
-      hasToken: !!userSettings?.gitlabAccessToken,
+      hasCookieToken: !!cookieAccessToken,
+      hasDbToken: !!userSettings?.gitlabAccessToken,
       mcpEnabledParam: parsed.data.mcpEnabled,
       toolsEnabled,
       modelId,
     });
 
-    if (userSettings?.gitlabAccessToken && toolsEnabled) {
-      console.log(
-        '[API] Loading GitLab tools... Has RefreshToken:',
-        !!userSettings.gitlabRefreshToken,
-      );
+    if (accessToken && toolsEnabled) {
+      console.log('[API] Loading GitLab tools...');
       // Import and create GitLab tools dynamically
       const { createGitLabTools } = await import('@/lib/mcp/gitlab-tools');
       tools = createGitLabTools(
         {
-          accessToken: userSettings.gitlabAccessToken,
-          refreshToken: userSettings.gitlabRefreshToken,
+          accessToken,
+          refreshToken, // passing this allows the tool to potentially handle 401s if we add that logic later, though currently it's mostly for init
           userId: session.user.id,
         },
         modelId,

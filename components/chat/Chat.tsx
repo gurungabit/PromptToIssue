@@ -20,6 +20,7 @@ import {
   Search,
   Code,
   BookOpen,
+  AlertTriangle,
 } from 'lucide-react';
 import { ToolInvocation } from './types';
 
@@ -139,6 +140,20 @@ function ChatInner({
       setMessages([]);
     });
   }, [registerResetCallback, setMessages]);
+
+  // Check GitLab auth status on mount (triggers silent refresh if needed)
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/gitlab/status');
+        const data = await res.json();
+        console.log('[Chat] GitLab Auth Status:', data);
+      } catch (err) {
+        console.error('[Chat] Failed to check auth status:', err);
+      }
+    };
+    checkAuth();
+  }, []);
 
   const isLoading = status === 'streaming' || status === 'submitted';
   const allMessages = messages.length > 0 ? messages : localMessages;
@@ -481,6 +496,12 @@ function ChatInner({
                 onModelChange={handleModelChange}
                 centered={true}
               />
+              <div className={`flex items-center justify-center gap-1.5 mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                <AlertTriangle className="w-3 h-3" />
+                <p className="text-[11px] font-medium">
+                  Only the last 20 conversations are saved for history.
+                </p>
+              </div>
             </div>
 
             <div className="mt-8 w-full max-w-2xl animate-in fade-in zoom-in-95 duration-500 delay-200 slide-in-from-bottom-8">
