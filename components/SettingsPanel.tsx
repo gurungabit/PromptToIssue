@@ -276,7 +276,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   About
                 </h3>
                 <p className="text-sm text-zinc-500">
-                  Prompt2Issue - AI-powered chat with GitLab integration
+                  PromptToIssue - AI-powered chat with GitLab integration
                 </p>
                 <p className={`text-xs mt-1 ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
                   Version 1.0.0

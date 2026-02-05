@@ -69,7 +69,7 @@ export default function RegisterPage() {
             <span className="text-white dark:text-zinc-900 font-bold text-lg">P</span>
           </div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Create an account</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Get started with Prompt2Issue</p>
+          <p className="text-zinc-500 dark:text-zinc-400">Get started with PromptToIssue</p>
         </div>
 
         {/* Form */}

@@ -364,7 +364,7 @@ function ChatInner({
         }`}
       >
         <h1 className={`font-medium ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-          {hasMessages ? 'Chat' : 'Prompt2Issue'}
+          {hasMessages ? 'Chat' : 'New Chat'}
         </h1>
         <div className="flex items-center gap-2">
           {hasMessages && (

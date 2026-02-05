@@ -174,14 +174,14 @@ export function ChatSidebar({ collapsed, onToggle }: ChatSidebarProps) {
         }`}
       >
         <div className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center">
               <span className="text-white font-bold text-sm">P</span>
             </div>
             <span className={`font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-              Prompt2Issue
+              PromptToIssue
             </span>
-          </div>
+          </Link>
           <button
             onClick={onToggle}
             className={`p-1.5 rounded-lg ${isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'}`}
