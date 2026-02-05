@@ -79,7 +79,7 @@ function ChatInner({
   }, [chatId, setCurrentChatId]);
 
   // Use useChat with transport
-  const { messages, status, error, sendMessage, setMessages } = useChat({
+  const { messages, status, error, sendMessage, setMessages, stop } = useChat({
     id: chatId || 'new-chat',
     messages: initialMessages,
     transport,
@@ -446,6 +446,8 @@ function ChatInner({
                 modelId={modelId}
                 onModelChange={handleModelChange}
                 centered={true}
+                onStop={stop}
+                isLoading={isLoading}
               />
               <div
                 className={`flex items-center justify-center gap-1.5 mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
@@ -625,6 +627,8 @@ function ChatInner({
             disabled={isLoading}
             modelId={modelId}
             onModelChange={handleModelChange}
+            onStop={stop}
+            isLoading={isLoading}
           />
         </div>
       )}

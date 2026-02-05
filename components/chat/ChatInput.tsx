@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, memo } from 'react';
 import { useTheme } from 'next-themes';
-import { Send } from 'lucide-react';
+import { Send, Square } from 'lucide-react';
 import { ModelSelector } from './ModelSelector';
 
 interface ChatInputProps {
@@ -11,6 +11,8 @@ interface ChatInputProps {
   modelId: string;
   onModelChange: (id: string) => void;
   centered?: boolean;
+  onStop?: () => void;
+  isLoading?: boolean;
 }
 
 export const ChatInput = memo(function ChatInput({
@@ -19,6 +21,8 @@ export const ChatInput = memo(function ChatInput({
   modelId,
   onModelChange,
   centered = false,
+  onStop,
+  isLoading = false,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -72,7 +76,12 @@ export const ChatInput = memo(function ChatInput({
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={centered ? 'What can I help you build today?' : 'Type your message...'}
-            disabled={disabled}
+            disabled={disabled && !isLoading} // Allow typing if loading only if we want to queue, but typically we disable input. Let's keep input disabled if desired, but button active. Actually user usually wants to stop.
+            // Requirement said "cancel/stop/abort chat from ui".
+            // If isLoading is true, we should probably allow clicking the stop button.
+            // But 'disabled' prop passed from parent (isLoading) disables everything.
+            // We'll need to handle 'disabled' carefully in the parent or here.
+            // For now, let's assume 'disabled' disables INPUT, but we want button enabled if it's a stop button.
             rows={1}
             className={`w-full bg-transparent px-6 py-4 resize-none focus:outline-none disabled:opacity-50 min-h-[60px] max-h-[180px] ${
               isDark
@@ -91,21 +100,35 @@ export const ChatInput = memo(function ChatInput({
               />
             </div>
 
-            <button
-              onClick={handleSend}
-              disabled={disabled || !value.trim()}
-              className={`p-2 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all ${
-                value.trim()
-                  ? isDark
-                    ? 'bg-white text-zinc-900 hover:bg-zinc-200 scale-100' // Active state dark mode
-                    : 'bg-zinc-900 text-white hover:bg-zinc-700 scale-100' // Active state light mode
-                  : isDark
-                    ? 'bg-zinc-800 text-zinc-500' // Inactive state dark mode
-                    : 'bg-zinc-100 text-zinc-400' // Inactive state light mode
-              }`}
-            >
-              <Send className="w-5 h-5" />
-            </button>
+            {isLoading && onStop ? (
+              <button
+                onClick={onStop}
+                className={`p-2 rounded-xl transition-all ${
+                  isDark
+                    ? 'bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700'
+                    : 'bg-zinc-100 text-zinc-500 hover:text-red-500 hover:bg-zinc-200'
+                }`}
+                title="Stop generating"
+              >
+                <Square className="w-5 h-5 fill-current" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={disabled || !value.trim()}
+                className={`p-2 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all ${
+                  value.trim()
+                    ? isDark
+                      ? 'bg-white text-zinc-900 hover:bg-zinc-200 scale-100' // Active state dark mode
+                      : 'bg-zinc-900 text-white hover:bg-zinc-700 scale-100' // Active state light mode
+                    : isDark
+                      ? 'bg-zinc-800 text-zinc-500' // Inactive state dark mode
+                      : 'bg-zinc-100 text-zinc-400' // Inactive state light mode
+                }`}
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
