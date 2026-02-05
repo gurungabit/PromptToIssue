@@ -63,6 +63,9 @@ function convertToModelMessages(messages: z.infer<typeof messageSchema>[]) {
   }));
 }
 
+// Allow streaming responses up to 5 minutes
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -202,9 +205,9 @@ export async function POST(request: Request) {
       system: systemPrompt,
       messages: modelMessages,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
-      // Allow up to 10 steps for tool continuation
+      // Allow up to 20 steps for tool continuation
       // stepCountIs stops when step count reaches the specified number
-      stopWhen: stepCountIs(10),
+      stopWhen: stepCountIs(20),
       onStepFinish: async ({ toolCalls, toolResults }) => {
         if (toolCalls) {
           allToolCalls.push(
