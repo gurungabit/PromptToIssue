@@ -1,4 +1,4 @@
-import { streamText, stepCountIs } from 'ai';
+import { streamText, stepCountIs, createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
@@ -145,7 +145,6 @@ export async function POST(request: Request) {
     const modelMessages = convertToModelMessages(messages);
 
     // Check if user has GitLab connected and MCP is enabled
-    let tools = {};
     const userSettings = await db.getUserSettings(session.user.id);
 
     // Get tokens from cookies (preferred) or DB (fallback)
@@ -167,113 +166,143 @@ export async function POST(request: Request) {
       modelId,
     });
 
-    if (accessToken && toolsEnabled) {
-      console.log('[API] Loading GitLab tools...');
-      // Import and create GitLab tools dynamically
-      const { createGitLabTools } = await import('@/lib/mcp/gitlab-tools');
-      tools = createGitLabTools(
-        {
-          accessToken,
-          refreshToken, // passing this allows the tool to potentially handle 401s if we add that logic later, though currently it's mostly for init
-          userId: session.user.id,
-        },
-        modelId,
-      );
-      console.log('[API] Tools loaded:', Object.keys(tools));
-    } else {
-      console.log('[API] Tools disabled or no token');
-    }
+    // Use createUIMessageStream to support custom data streaming (e.g., research sub-agent steps)
+    const stream = createUIMessageStream({
+      execute: async ({ writer }) => {
+        // Create tools with writer so sub-agents can stream progress
+        let tools = {};
 
-    // Aggregate tool calls and results across steps
-    interface ToolCall {
-      toolCallId: string;
-      toolName: string;
-      args: Record<string, unknown>;
-    }
-    interface ToolResult {
-      toolCallId: string;
-      toolName: string;
-      result: unknown;
-    }
-
-    const allToolCalls: ToolCall[] = [];
-    const allToolResults: ToolResult[] = [];
-
-    // Stream the response
-    const result = streamText({
-      model,
-      system: systemPrompt,
-      messages: modelMessages,
-      tools: Object.keys(tools).length > 0 ? tools : undefined,
-      // Allow up to 20 steps for tool continuation
-      // stepCountIs stops when step count reaches the specified number
-      stopWhen: stepCountIs(20),
-      onStepFinish: async ({ toolCalls, toolResults }) => {
-        if (toolCalls) {
-          allToolCalls.push(
-            ...toolCalls.map((tc) => ({
-              toolCallId: tc.toolCallId,
-              toolName: tc.toolName,
-              // Cast to access SDK-specific property 'args' or 'input' safely
-              args: ((tc as unknown as { args: Record<string, unknown> }).args ||
-                (tc as unknown as { input: Record<string, unknown> }).input ||
-                {}) as Record<string, unknown>,
-            })),
+        if (accessToken && toolsEnabled) {
+          console.log('[API] Loading GitLab tools...');
+          const { createGitLabTools } = await import('@/lib/mcp/gitlab-tools');
+          tools = createGitLabTools(
+            {
+              accessToken,
+              refreshToken,
+              userId: session.user.id,
+            },
+            modelId,
+            writer as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- SDK writer type is compatible but TS can't prove it due to contravariance
           );
-        }
-        if (toolResults) {
-          allToolResults.push(
-            ...toolResults.map((tr) => ({
-              toolCallId: tr.toolCallId,
-              toolName: tr.toolName,
-              // Cast to access SDK-specific property 'result' or 'output' safely
-              result:
-                (tr as unknown as { result: unknown }).result ||
-                (tr as unknown as { output: unknown }).output,
-            })),
-          );
-        }
-      },
-      onFinish: async ({ text }) => {
-        // Construct parts array for persistence from aggregated data
-        const parts: MessagePart[] = [];
-        if (text) {
-          parts.push({ type: 'text', text });
+          console.log('[API] Tools loaded:', Object.keys(tools));
+        } else {
+          console.log('[API] Tools disabled or no token');
         }
 
-        allToolCalls.forEach((tc) => {
-          parts.push({
-            type: 'tool-call',
-            toolCallId: tc.toolCallId,
-            toolName: tc.toolName,
-            args: tc.args,
-          });
+        // Aggregate tool calls and results across steps
+        interface ToolCall {
+          toolCallId: string;
+          toolName: string;
+          args: Record<string, unknown>;
+        }
+        interface ToolResult {
+          toolCallId: string;
+          toolName: string;
+          result: unknown;
+        }
+
+        const allToolCalls: ToolCall[] = [];
+        const allToolResults: ToolResult[] = [];
+
+        // Stream the response
+        const result = streamText({
+          model,
+          system: systemPrompt,
+          messages: modelMessages,
+          tools: Object.keys(tools).length > 0 ? tools : undefined,
+          // Allow up to 20 steps for tool continuation
+          // stepCountIs stops when step count reaches the specified number
+          stopWhen: stepCountIs(20),
+          onStepFinish: async ({ toolCalls, toolResults }) => {
+            if (toolCalls) {
+              allToolCalls.push(
+                ...toolCalls.map((tc) => ({
+                  toolCallId: tc.toolCallId,
+                  toolName: tc.toolName,
+                  // Cast to access SDK-specific property 'args' or 'input' safely
+                  args: ((tc as unknown as { args: Record<string, unknown> }).args ||
+                    (tc as unknown as { input: Record<string, unknown> }).input ||
+                    {}) as Record<string, unknown>,
+                })),
+              );
+            }
+            if (toolResults) {
+              allToolResults.push(
+                ...toolResults.map((tr) => ({
+                  toolCallId: tr.toolCallId,
+                  toolName: tr.toolName,
+                  // Cast to access SDK-specific property 'result' or 'output' safely
+                  result:
+                    (tr as unknown as { result: unknown }).result ||
+                    (tr as unknown as { output: unknown }).output,
+                })),
+              );
+            }
+          },
+          onFinish: async ({ text }) => {
+            // Construct parts array for persistence from aggregated data
+            const parts: MessagePart[] = [];
+            if (text) {
+              parts.push({ type: 'text', text });
+            }
+
+            allToolCalls.forEach((tc) => {
+              parts.push({
+                type: 'tool-call',
+                toolCallId: tc.toolCallId,
+                toolName: tc.toolName,
+                args: tc.args,
+              });
+            });
+
+            allToolResults.forEach((tr) => {
+              parts.push({
+                type: 'tool-result',
+                toolCallId: tr.toolCallId,
+                toolName: tr.toolName,
+                result: tr.result,
+              });
+
+              // If this tool result is from research_project, extract and persist sub-agent steps
+              if (
+                tr.toolName === 'research_project' &&
+                tr.result &&
+                typeof tr.result === 'object' &&
+                'toolsUsed' in (tr.result as Record<string, unknown>)
+              ) {
+                const researchResult = tr.result as {
+                  toolsUsed?: Array<{ toolName: string; status: string }>;
+                };
+                if (researchResult.toolsUsed) {
+                  parts.push({
+                    type: 'research-steps' as MessagePart['type'],
+                    toolCallId: tr.toolCallId,
+                    steps: researchResult.toolsUsed,
+                  } as unknown as MessagePart);
+                }
+              }
+            });
+
+            console.log('[API] Saving parts count:', parts.length, 'Tools:', allToolCalls.length);
+
+            // Save assistant message to database with parts
+            await db.addMessage({
+              id: nanoid(),
+              chatId: currentChatId!,
+              role: 'assistant',
+              content: text || '',
+              parts: parts.length > 0 ? parts : undefined,
+            });
+          },
         });
 
-        allToolResults.forEach((tr) => {
-          parts.push({
-            type: 'tool-result',
-            toolCallId: tr.toolCallId,
-            toolName: tr.toolName,
-            result: tr.result,
-          });
-        });
-
-        console.log('[API] Saving parts count:', parts.length, 'Tools:', allToolCalls.length);
-
-        // Save assistant message to database with parts
-        await db.addMessage({
-          id: nanoid(),
-          chatId: currentChatId!,
-          role: 'assistant',
-          content: text || '',
-          parts: parts.length > 0 ? parts : undefined,
-        });
+        // Merge the streamText result into our custom stream
+        writer.merge(result.toUIMessageStream());
       },
     });
 
     // Return streaming response with chat ID in headers
-    const response = result.toUIMessageStreamResponse();
+    const response = createUIMessageStreamResponse({ stream });
     response.headers.set('X-Chat-Id', currentChatId);
 
     return response;

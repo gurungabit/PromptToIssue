@@ -560,10 +560,21 @@ export async function executeSearchCode(
   }
 }
 
+// Writer interface for streaming custom data parts (matches AI SDK's UIMessageStreamWriter)
+interface StreamWriter {
+  write: (part: {
+    type: `data-${string}`;
+    data: unknown;
+    id?: string;
+    transient?: boolean;
+  }) => void;
+}
+
 // Factory function to create AI SDK v6 compatible tools
 export function createGitLabTools(
   tokens: { accessToken: string; refreshToken?: string; userId?: string } | string,
   modelId?: string,
+  writer?: StreamWriter,
 ) {
   const tokenData = typeof tokens === 'string' ? { accessToken: tokens } : tokens;
 
@@ -644,7 +655,7 @@ export function createGitLabTools(
       execute: async ({ projectId }) => {
         // Dynamically import to avoid circular dependencies
         const { researchProject } = await import('@/lib/ai/agents/research-agent');
-        return researchProject(projectId, tokenData.accessToken, modelId);
+        return researchProject(projectId, tokenData.accessToken, modelId, writer);
       },
     }),
   };

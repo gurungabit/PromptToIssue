@@ -14,6 +14,22 @@ import {
 
 // File content and list repo files functions moved to gitlab-tools.ts
 
+// Research step tracking for streaming and persistence
+export interface ResearchStep {
+  toolName: string;
+  status: 'running' | 'completed' | 'error';
+}
+
+// Writer interface for streaming custom data parts (matches AI SDK's UIMessageStreamWriter)
+interface StreamWriter {
+  write: (part: {
+    type: `data-${string}`;
+    data: unknown;
+    id?: string;
+    transient?: boolean;
+  }) => void;
+}
+
 // Research result type
 export interface ResearchResult {
   summary: string;
@@ -33,6 +49,7 @@ export interface ResearchResult {
   readme: string | null;
   filesOverview: string[];
   researchNotes: string;
+  toolsUsed: ResearchStep[];
 }
 
 /**
@@ -45,6 +62,7 @@ export async function researchProject(
   projectId: string | number,
   tokens: { accessToken: string; refreshToken?: string; userId?: string } | string,
   modelId?: string,
+  writer?: StreamWriter,
 ): Promise<ResearchResult> {
   const tokenData = typeof tokens === 'string' ? { accessToken: tokens } : tokens;
 
@@ -94,6 +112,9 @@ After gathering information, provide a final summary in JSON format with these f
 - summary: A 2-3 sentence overview of what this project is
 - researchNotes: Detailed notes about what you found (technologies used, project purpose, activity level, etc.)`;
 
+  // Track tools used for persistence
+  const toolsUsed: ResearchStep[] = [];
+
   // Run the research agent
   const result = await generateText({
     model,
@@ -101,6 +122,39 @@ After gathering information, provide a final summary in JSON format with these f
     prompt: `Research the GitLab project with ID: ${projectId}. Gather comprehensive information about it and provide a detailed summary.`,
     tools: researchTools,
     stopWhen: stepCountIs(20), // Allow up to 20 steps for thorough research
+    onStepFinish: ({ toolCalls, toolResults }) => {
+      // Stream running status for each tool call
+      if (toolCalls) {
+        for (const tc of toolCalls) {
+          const step: ResearchStep = { toolName: tc.toolName, status: 'running' };
+          toolsUsed.push(step);
+          if (writer) {
+            writer.write({
+              type: 'data-research-step',
+              data: step,
+            });
+          }
+        }
+      }
+      // Stream completed status for each tool result
+      if (toolResults) {
+        for (const tr of toolResults) {
+          // Update the existing step to completed
+          const existing = toolsUsed.find(
+            (s) => s.toolName === tr.toolName && s.status === 'running',
+          );
+          if (existing) {
+            existing.status = 'completed';
+          }
+          if (writer) {
+            writer.write({
+              type: 'data-research-step',
+              data: { toolName: tr.toolName, status: 'completed' },
+            });
+          }
+        }
+      }
+    },
   });
 
   // Parse the research results
@@ -218,5 +272,6 @@ After gathering information, provide a final summary in JSON format with these f
     readme,
     filesOverview,
     researchNotes,
+    toolsUsed,
   };
 }

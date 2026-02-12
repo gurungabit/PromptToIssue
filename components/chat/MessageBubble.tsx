@@ -26,6 +26,52 @@ interface ToolPart {
   output?: unknown;
 }
 
+// Research step from data stream
+interface ResearchStep {
+  toolName: string;
+  status: 'running' | 'completed' | 'error';
+}
+
+// Helper to extract research steps from data-stream parts (streaming) and persisted parts (DB)
+function getResearchStepsFromParts(parts?: unknown[]): ResearchStep[] {
+  if (!parts || !Array.isArray(parts)) return [];
+  const steps: ResearchStep[] = [];
+
+  for (const part of parts) {
+    if (typeof part !== 'object' || part === null || !('type' in part)) continue;
+
+    const pType = (part as { type: string }).type;
+
+    // Handle streaming format: data-research-step with data object
+    if (pType === 'data-research-step' && 'data' in part) {
+      const data = (part as { data: { toolName: string; status: string } }).data;
+      if (data && data.toolName) {
+        steps.push({
+          toolName: data.toolName,
+          status: (data.status as ResearchStep['status']) || 'running',
+        });
+      }
+    }
+
+    // Handle persisted format: research-steps with steps array
+    if (pType === 'research-steps' && 'steps' in part) {
+      const persistedSteps = (part as { steps: Array<{ toolName: string; status: string }> }).steps;
+      if (Array.isArray(persistedSteps)) {
+        for (const s of persistedSteps) {
+          if (s && s.toolName) {
+            steps.push({
+              toolName: s.toolName,
+              status: (s.status as ResearchStep['status']) || 'completed',
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return steps;
+}
+
 // Helper to extract tool invocations from message parts
 function getToolInvocationsFromParts(parts?: unknown[]): ToolInvocation[] {
   if (!parts || !Array.isArray(parts)) return [];
@@ -80,6 +126,9 @@ export const MessageBubble = memo(function MessageBubble({
   const isUser = role === 'user';
   const isAssistant = role === 'assistant';
 
+  // Extract research steps from streaming data parts
+  const researchSteps = useMemo(() => getResearchStepsFromParts(parts), [parts]);
+
   // Memoize tool parsing to prevent re-renders when other props (like streaming content) change
   // IF the parts array is referentially stable (which it is for history)
   // For streaming, useMemo will re-run but that's fine for the active message.
@@ -133,6 +182,9 @@ export const MessageBubble = memo(function MessageBubble({
                     status:
                       inv.state === 'result' ? 'success' : isStreaming ? 'pending' : 'incomplete',
                     error: undefined, // 'error' in inv ? inv.error : undefined (ToolInvocation type varies)
+                    // Attach research steps to the research_project tool call
+                    researchSteps:
+                      inv.toolName === 'research_project' ? researchSteps : undefined,
                   }))}
                 />
               </div>

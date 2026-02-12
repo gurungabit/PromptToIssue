@@ -66,6 +66,8 @@ export default async function ChatPage({ params }: ChatPageProps) {
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
       toolInvocations,
+      // Pass persisted parts so MessageBubble can extract research-steps for display
+      parts: msg.parts,
     } as unknown as UIMessage;
   });
 
